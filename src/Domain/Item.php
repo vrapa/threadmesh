@@ -10,6 +10,9 @@ use InvalidArgumentException;
 final class Item
 {
     /**
+     * @param list<Actor> $recipients
+     * @param list<string> $threadReferences
+     * @param list<Attachment> $attachments
      * @param list<string> $labels
      * @param array<string, scalar|null> $metadata
      */
@@ -18,11 +21,14 @@ final class Item
         public readonly SourceReference $source,
         public readonly ItemType $type,
         public readonly string $title,
-        public readonly ?string $body,
+        public readonly ItemContent $content,
         public readonly Actor $author,
         public readonly ItemStatus $status,
         public readonly DateTimeImmutable $createdAt,
         public readonly ?DateTimeImmutable $updatedAt = null,
+        public readonly array $recipients = [],
+        public readonly array $threadReferences = [],
+        public readonly array $attachments = [],
         public readonly array $labels = [],
         public readonly array $metadata = [],
     ) {
@@ -34,5 +40,12 @@ final class Item
                 throw new InvalidArgumentException('Item labels must not be empty.');
             }
         }
+
+        foreach ($threadReferences as $reference) {
+            if (trim($reference) === '') {
+                throw new InvalidArgumentException('Thread references must not be empty.');
+            }
+        }
+
     }
 }

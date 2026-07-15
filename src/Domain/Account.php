@@ -12,6 +12,7 @@ final class Account
         public readonly string $id,
         public readonly string $connector,
         public readonly string $displayName,
+        public readonly bool $enabled = true,
     ) {
         self::requireNonEmpty($id, 'Account ID');
         self::requireNonEmpty($connector, 'Connector name');

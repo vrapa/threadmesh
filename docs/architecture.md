@@ -1,26 +1,33 @@
 # Architecture
 
-ThreadMesh separates provider integrations from a small normalized core.
+ThreadMesh is one Composer package with replaceable internal boundaries:
 
-## Boundaries
+```text
+HTTP API ─┐
+          ├─ ThreadMeshService ─ core synchronization ─ IMAP source
+MCP tools ┘          │
+                     └─ encrypted SQLite storage
+```
 
-The core contains immutable domain objects and connector contracts. It has no production dependencies and knows nothing about IMAP, Jira, Bitbucket, databases, queues, or web frameworks.
-
-A connector translates provider records into core `Item` objects and maps actions back to provider operations. It owns authentication, rate limits, pagination, retries, and provider-specific cursors.
-
-The host schedules synchronization, stores items and cursors, encrypts credentials, evaluates rules, and presents a CLI, API, or UI.
+The API configures accounts and exposes stored data. MCP exposes only mail synchronization, reading, assessment, alerts, and drafts; it deliberately does not expose credentials. The AI client is the decision-making layer, not part of this package.
 
 ## Synchronization invariants
 
-1. A source reference is stable within one connector account.
-2. Replaying a cursor must not create duplicate host records.
-3. A result cursor is persisted only after all returned items are stored.
-4. Cursor values are opaque outside the connector.
-5. Provider payloads never become the public normalized API.
+1. Initialization stores the current IMAP high-water UID and imports no history.
+2. Messages are read with PEEK and do not become read or have their flags changed.
+3. `SourceReference` provides an idempotent unique identity.
+4. Items and the next cursor are stored in one SQLite transaction.
+5. A changed UIDVALIDITY stops the stream instead of silently duplicating or skipping mail.
+6. Attachments are represented by metadata and remain on IMAP until requested.
 
-## Dependency direction
+## Write boundary
 
-```text
-host application ──> connector ──> core
-       └──────────────────────────> core
-```
+Normal synchronization is read-only. Reply drafts are first stored locally. A separate operation with explicit confirmation may append a MIME message with the `\\Draft` flag to the account's configured `draftFolder`. There is no SMTP adapter and no send operation.
+
+## Trust boundary
+
+Email subjects, bodies, headers, and attachments are untrusted data and may contain prompt injection. MCP tool descriptions remind clients of this boundary. Credentials are accepted only by the bearer-protected configuration API, encrypted with Sodium AEAD, and never returned by API or MCP.
+
+The HTTP MCP listener binds to `127.0.0.1` only. Remote ChatGPT access must be added through an authenticated TLS gateway; merely changing a bind address is not considered a secure deployment.
+
+The local Docker Compose deployment uses separate API and MCP containers sharing one SQLite named volume. Both host ports remain restricted to `127.0.0.1`; only the MCP process inside its isolated container binds to the container interface.

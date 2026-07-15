@@ -1,0 +1,27 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use ThreadMesh\Bootstrap;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+$command = $argv[1] ?? 'help';
+
+try {
+    if ($command === 'key:generate') {
+        fwrite(STDOUT, base64_encode(random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_KEYBYTES)) . PHP_EOL);
+        exit(0);
+    }
+    if ($command === 'sync') {
+        $result = Bootstrap::create()->sync($argv[2] ?? null);
+        fwrite(STDOUT, json_encode($result, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT) . PHP_EOL);
+        exit(0);
+    }
+
+    fwrite(STDOUT, "ThreadMesh\n\nCommands:\n  key:generate       Generate a base64 master key\n  sync [account-id]  Synchronize initialized IMAP folders\n");
+} catch (Throwable $error) {
+    fwrite(STDERR, $error->getMessage() . PHP_EOL);
+    exit(1);
+}
