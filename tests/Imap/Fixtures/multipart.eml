@@ -1,0 +1,30 @@
+From: Sender Name <Sender@Example.com>
+To: Recipient <recipient@example.com>
+Subject: MIME fixture
+Date: Wed, 15 Jul 2026 10:00:00 +0200
+Message-ID: <fixture-1@example.com>
+References: <thread-1@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="mixed-boundary"
+
+--mixed-boundary
+Content-Type: multipart/alternative; boundary="body-boundary"
+
+--body-boundary
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+Plain body
+--body-boundary
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<p>HTML body</p>
+--body-boundary--
+--mixed-boundary
+Content-Type: application/pdf; name="report.pdf"
+Content-Disposition: attachment; filename="report.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQKJVRocmVhZE1lc2gK
+--mixed-boundary--

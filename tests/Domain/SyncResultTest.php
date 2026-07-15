@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 namespace ThreadMesh\Tests\Domain;
 
-use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use ThreadMesh\Domain\SyncCursor;
 use ThreadMesh\Domain\SyncResult;
 
 final class SyncResultTest extends TestCase
 {
-    public function testPaginationRequiresACursor(): void
+    public function testAnEmptyPaginatedResultHasANextCursor(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        new SyncResult([], null, true);
+        $cursor = new SyncCursor('next');
+        $result = new SyncResult([], $cursor, true);
+        self::assertSame($cursor, $result->nextCursor);
+        self::assertTrue($result->hasMore);
     }
 
     public function testAnEmptyFinalResultIsValid(): void
     {
-        $result = new SyncResult([], null);
+        $result = new SyncResult([], new SyncCursor('final'));
         self::assertSame([], $result->items);
         self::assertFalse($result->hasMore);
     }

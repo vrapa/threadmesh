@@ -1,0 +1,12 @@
+.composer-home
+.env
+.git
+.github
+.idea
+.phpunit.cache
+.phpunit.result.cache
+.phpstan-cache
+.vscode
+tests
+var
+vendor

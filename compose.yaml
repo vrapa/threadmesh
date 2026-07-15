@@ -1,0 +1,51 @@
+name: threadmesh
+
+x-threadmesh-common: &threadmesh-common
+  build:
+    context: .
+  image: threadmesh:local
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  environment:
+    THREADMESH_MASTER_KEY: ${THREADMESH_MASTER_KEY:-}
+    THREADMESH_API_TOKEN: ${THREADMESH_API_TOKEN:-}
+    THREADMESH_DB: /app/var/threadmesh.sqlite
+  volumes:
+    - threadmesh-data:/app/var
+
+services:
+  api:
+    <<: *threadmesh-common
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "public", "public/router.php"]
+    ports:
+      - "127.0.0.1:${THREADMESH_API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/health') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  mcp:
+    <<: *threadmesh-common
+    command: ["php", "bin/threadmesh-mcp"]
+    environment:
+      THREADMESH_MASTER_KEY: ${THREADMESH_MASTER_KEY:-}
+      THREADMESH_DB: /app/var/threadmesh.sqlite
+      THREADMESH_MCP_HOST: 0.0.0.0
+      THREADMESH_MCP_PORT: 8081
+    ports:
+      - "127.0.0.1:${THREADMESH_MCP_PORT:-8081}:8081"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  threadmesh-data:

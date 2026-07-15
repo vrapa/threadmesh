@@ -6,7 +6,7 @@
          colors="true"
          failOnWarning="true">
     <testsuites>
-        <testsuite name="ThreadMesh Core">
+        <testsuite name="ThreadMesh">
             <directory>tests</directory>
         </testsuite>
     </testsuites>

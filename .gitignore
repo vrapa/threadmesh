@@ -3,5 +3,10 @@
 /.phpunit.result.cache
 /.phpstan-cache/
 /.vscode/
-/composer.lock
 /vendor/
+/.composer-home/
+/var/*.sqlite
+/var/*.sqlite-shm
+/var/*.sqlite-wal
+/var/*.key
+/.env
