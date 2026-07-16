@@ -41,6 +41,8 @@ final class ImapConnectorTest extends TestCase
         $connector = $this->connector($gateway);
         $initial = $connector->initialize(new SourceStream('INBOX', 'Inbox'));
 
+        $gateway->highestUid = 43;
+
         $result = $connector->synchronize(new SyncRequest(new SourceStream('INBOX', 'Inbox'), $initial, 2));
 
         self::assertCount(2, $result->items);
@@ -60,11 +62,27 @@ final class ImapConnectorTest extends TestCase
         $connector = $this->connector($gateway);
         $initial = $connector->initialize(new SourceStream('INBOX', 'Inbox'));
 
+        $gateway->highestUid = 41;
+
         $first = $connector->synchronize(new SyncRequest(new SourceStream('INBOX', 'Inbox'), $initial, 100));
         $second = $connector->synchronize(new SyncRequest(new SourceStream('INBOX', 'Inbox'), $initial, 100));
 
         self::assertSame($first->items[0]->source->key(), $second->items[0]->source->key());
         self::assertSame((string) $first->items[0]->id, (string) $second->items[0]->id);
+    }
+
+    public function testSynchronizationSkipsMessageQueryWhenFolderHasNoNewUid(): void
+    {
+        $gateway = new FakeGateway();
+        $connector = $this->connector($gateway);
+        $initial = $connector->initialize(new SourceStream('INBOX', 'Inbox'));
+
+        $result = $connector->synchronize(new SyncRequest(new SourceStream('INBOX', 'Inbox'), $initial));
+
+        self::assertSame([], $result->items);
+        self::assertSame($initial->value, $result->nextCursor->value);
+        self::assertFalse($result->hasMore);
+        self::assertSame([], $gateway->requestedAfter);
     }
 
     public function testUidValidityChangeStopsStreamAndRequiresReinitialization(): void
@@ -123,6 +141,7 @@ final class ImapConnectorTest extends TestCase
 final class FakeGateway implements ImapGateway
 {
     public int $uidValidity = 987;
+    public int $highestUid = 40;
     /** @var list<FolderStatus> */
     public array $folderList = [];
     /** @var list<MessageData> */
@@ -137,7 +156,7 @@ final class FakeGateway implements ImapGateway
     }
     public function status(string $folderId): FolderStatus
     {
-        return new FolderStatus($folderId, $folderId, $this->uidValidity, 40);
+        return new FolderStatus($folderId, $folderId, $this->uidValidity, $this->highestUid);
     }
     public function messagesAfter(string $folderId, int $lastUid, int $limit): array
     {

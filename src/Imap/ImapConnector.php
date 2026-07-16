@@ -74,6 +74,10 @@ final class ImapConnector implements SourceConnector
             ));
         }
 
+        if ($status->highestUid <= $cursor->lastUid) {
+            return new SyncResult([], $request->cursor, false);
+        }
+
         $messages = $this->gateway->messagesAfter($request->stream->id, $cursor->lastUid, $request->limit + 1);
         $hasMore = count($messages) > $request->limit;
         $batch = array_slice($messages, 0, $request->limit);
