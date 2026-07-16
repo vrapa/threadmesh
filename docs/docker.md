@@ -57,7 +57,7 @@ Verify the API:
 curl http://127.0.0.1:8080/health
 ```
 
-Continue with [HTTP API account configuration](api.md), then add `http://127.0.0.1:8081/mcp` to the client as described in the [MCP guide](mcp.md).
+On Windows, add the first mailbox with the [interactive IMAP account helper](account-setup.md). For programmatic setup, use the [HTTP API](api.md). Then add `http://127.0.0.1:8081/mcp` to the client as described in the [MCP guide](mcp.md).
 
 ## Ports
 
