@@ -57,7 +57,7 @@ Ověřte API:
 curl http://127.0.0.1:8080/health
 ```
 
-Poté nakonfigurujte účet podle [návodu HTTP API](api.md) a připojte `http://127.0.0.1:8081/mcp` podle [MCP návodu](mcp.md).
+Ve Windows přidejte první schránku pomocí [interaktivního průvodce IMAP účtem](account-setup.cs.md). Pro programové nastavení použijte [HTTP API](api.md). Poté připojte `http://127.0.0.1:8081/mcp` podle [MCP návodu](mcp.md).
 
 ## Změna portů
 

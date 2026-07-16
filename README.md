@@ -68,7 +68,15 @@ Start the local API:
 php -S 127.0.0.1:8080 -t public public/router.php
 ```
 
-Configure an account with `POST /v1/accounts` and a bearer token:
+On Windows, use the interactive helper to configure and test an account without placing its password in shell history or a JSON file:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1
+```
+
+The helper discovers the server's folders, configures the reply-draft folder, and initializes selected synchronization folders only after explicit confirmation. See the [Windows IMAP account setup guide](docs/account-setup.md).
+
+For programmatic setup, send `POST /v1/accounts` with a bearer token:
 
 ```json
 {
@@ -127,4 +135,4 @@ IMAP credentials are encrypted in SQLite; the master key is never stored there. 
 
 ThreadMesh is licensed under the [MIT License](LICENSE). See [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Additional documentation: [HTTP API](docs/api.md), [Docker](docs/docker.md), [architecture](docs/architecture.md), and [Czech automation guide](docs/automation.cs.md).
+Additional documentation: [Windows IMAP account setup](docs/account-setup.md), [HTTP API](docs/api.md), [Docker](docs/docker.md), [architecture](docs/architecture.md), and [Czech automation guide](docs/automation.cs.md).

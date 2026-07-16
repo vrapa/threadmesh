@@ -68,7 +68,15 @@ Spusťte lokální API:
 php -S 127.0.0.1:8080 -t public public/router.php
 ```
 
-Účet nakonfigurujte pomocí `POST /v1/accounts`:
+Ve Windows použijte interaktivního průvodce, který nakonfiguruje a otestuje účet, aniž by heslo vložil do historie shellu nebo JSON souboru:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1
+```
+
+Průvodce načte složky ze serveru, nastaví složku konceptů a vybrané synchronizační složky inicializuje až po výslovném potvrzení. Podrobnosti jsou v [českém návodu k nastavení IMAP účtu](docs/account-setup.cs.md).
+
+Pro programové nastavení použijte `POST /v1/accounts`:
 
 ```json
 {
