@@ -11,6 +11,7 @@ use ThreadMesh\Domain\SourceStream;
 use ThreadMesh\Domain\SyncCursor;
 use ThreadMesh\Domain\SyncRequest;
 use ThreadMesh\Domain\SyncResult;
+use ThreadMesh\Exception\CursorInvalidException;
 use ThreadMesh\Exception\ThreadMeshException;
 use ThreadMesh\Exception\TemporarySourceException;
 use ThreadMesh\Imap\Client\ImapGateway;
@@ -66,15 +67,39 @@ final class ImapConnector implements SourceConnector
     {
         $cursor = $this->cursors->decode($request->cursor);
         $this->gateway->connect($this->configuration);
-        $status = $this->gateway->status($request->stream->id);
-        if ($status->uidValidity !== $cursor->uidValidity) {
+
+        try {
+            $status = $this->gateway->status($request->stream->id);
+            if ($status->uidValidity !== $cursor->uidValidity) {
+                throw new TemporarySourceException(sprintf(
+                    'UIDVALIDITY changed for folder "%s". Reinitialize this stream before synchronizing again.',
+                    $request->stream->id,
+                ));
+            }
+
+            if ($status->highestUid <= $cursor->lastUid) {
+                return new SyncResult([], $request->cursor, false);
+            }
+
+            $messages = $this->gateway->messagesAfter($request->stream->id, $cursor->lastUid, $request->limit + 1);
+        } catch (TemporarySourceException $error) {
+            if ($this->isInvalidMessageSet($error)) {
+                throw new CursorInvalidException(sprintf(
+                    'IMAP cursor is invalid for account "%s", folder "%s": %s Reinitialize this stream before synchronizing again.',
+                    $this->configuration->accountId,
+                    $request->stream->id,
+                    $error->getMessage(),
+                ), 0, $error);
+            }
+
             throw new TemporarySourceException(sprintf(
-                'UIDVALIDITY changed for folder "%s". Reinitialize this stream before synchronizing again.',
+                'IMAP sync failed for account "%s", folder "%s": %s',
+                $this->configuration->accountId,
                 $request->stream->id,
-            ));
+                $error->getMessage(),
+            ), 0, $error);
         }
 
-        $messages = $this->gateway->messagesAfter($request->stream->id, $cursor->lastUid, $request->limit + 1);
         $hasMore = count($messages) > $request->limit;
         $batch = array_slice($messages, 0, $request->limit);
         $lastUid = $cursor->lastUid;
@@ -99,5 +124,10 @@ final class ImapConnector implements SourceConnector
     {
         $this->gateway->connect($this->configuration);
         return $this->gateway->downloadAttachment($folderId, $uid, $partId);
+    }
+
+    private function isInvalidMessageSet(TemporarySourceException $error): bool
+    {
+        return str_contains(strtolower($error->getMessage()), 'invalid message set');
     }
 }

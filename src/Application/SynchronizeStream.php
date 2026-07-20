@@ -14,6 +14,7 @@ use ThreadMesh\Contract\TransactionManager;
 use ThreadMesh\Domain\SourceStream;
 use ThreadMesh\Domain\SyncRequest;
 use ThreadMesh\Domain\SyncResult;
+use ThreadMesh\Exception\CursorInvalidException;
 use ThreadMesh\Exception\CursorNotInitializedException;
 use ThreadMesh\Exception\ThreadMeshException;
 
@@ -36,9 +37,18 @@ final class SynchronizeStream
         if ($cursor === null) {
             throw new CursorNotInitializedException('The source stream must be initialized before synchronization.');
         }
+        $connector = $this->connectors->forAccount($account);
         $runId = $this->runs->start($accountId, $stream->id);
         try {
-            $result = $this->connectors->forAccount($account)->synchronize(new SyncRequest($stream, $cursor, $limit));
+            try {
+                $result = $connector->synchronize(new SyncRequest($stream, $cursor, $limit));
+            } catch (CursorInvalidException) {
+                $replacementCursor = $connector->initialize($stream);
+                $this->transactions->run(function () use ($accountId, $stream, $replacementCursor): void {
+                    $this->states->save($accountId, $stream->id, $replacementCursor);
+                });
+                $result = $connector->synchronize(new SyncRequest($stream, $replacementCursor, $limit));
+            }
             $this->transactions->run(function () use ($accountId, $stream, $result): void {
                 foreach ($result->items as $item) {
                     $this->items->upsert($item);
