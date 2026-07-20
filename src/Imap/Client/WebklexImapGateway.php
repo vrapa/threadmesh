@@ -110,7 +110,12 @@ final class WebklexImapGateway implements ImapGateway
             usort($messages, static fn (MessageData $a, MessageData $b): int => $a->uid <=> $b->uid);
             return $messages;
         } catch (Throwable $error) {
-            throw $this->translate($error, 'Could not fetch IMAP messages.');
+            throw $this->translate($error, sprintf(
+                'Could not fetch IMAP messages for folder "%s" after UID %d (limit %d).',
+                $folderId,
+                $lastUid,
+                $limit,
+            ));
         }
     }
 
@@ -253,6 +258,16 @@ final class WebklexImapGateway implements ImapGateway
         if ($error instanceof AuthFailedException) {
             return new AuthenticationException('IMAP authentication failed.', 0, $error);
         }
-        return new TemporarySourceException($message, 0, $error);
+        return new TemporarySourceException($this->appendCause($message, $error), 0, $error);
+    }
+
+    private function appendCause(string $message, Throwable $error): string
+    {
+        $detail = $this->nullableString($error->getMessage());
+        if ($detail === null || $detail === $message) {
+            return $message;
+        }
+
+        return sprintf('%s Cause: %s', $message, $detail);
     }
 }

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use ThreadMesh\Domain\SourceStream;
 use ThreadMesh\Domain\SyncRequest;
+use ThreadMesh\Exception\CursorInvalidException;
 use ThreadMesh\Exception\TemporarySourceException;
 use ThreadMesh\Imap\Client\AttachmentData;
 use ThreadMesh\Imap\Client\EmailAddress;
@@ -97,6 +98,47 @@ final class ImapConnectorTest extends TestCase
         $connector->synchronize(new SyncRequest(new SourceStream('INBOX', 'Inbox'), $initial));
     }
 
+    public function testInvalidMessageSetRaisesCursorInvalidException(): void
+    {
+        $gateway = new FakeGateway();
+        $gateway->messageError = new TemporarySourceException(
+            'Could not fetch IMAP messages for folder "INBOX" after UID 40 (limit 101). Cause: BAD Invalid message set'
+        );
+        $connector = $this->connector($gateway);
+        $initial = $connector->initialize(new SourceStream('INBOX', 'Inbox'));
+        $gateway->highestUid = 41;
+
+        try {
+            $connector->synchronize(new SyncRequest(new SourceStream('INBOX', 'Inbox'), $initial, 100));
+            self::fail('Expected synchronize() to fail with an invalid cursor.');
+        } catch (CursorInvalidException $error) {
+            self::assertStringContainsString('IMAP cursor is invalid for account "mail-1", folder "INBOX"', $error->getMessage());
+            self::assertInstanceOf(TemporarySourceException::class, $error->getPrevious());
+        }
+    }
+
+    public function testSynchronizationFailureIncludesAccountAndFolderContext(): void
+    {
+        $gateway = new FakeGateway();
+        $gateway->messageError = new TemporarySourceException(
+            'Could not fetch IMAP messages for folder "INBOX" after UID 40 (limit 101). Cause: unexpected server response.'
+        );
+        $connector = $this->connector($gateway);
+        $initial = $connector->initialize(new SourceStream('INBOX', 'Inbox'));
+        $gateway->highestUid = 41;
+
+        try {
+            $connector->synchronize(new SyncRequest(new SourceStream('INBOX', 'Inbox'), $initial, 100));
+            self::fail('Expected synchronize() to fail.');
+        } catch (TemporarySourceException $error) {
+            self::assertSame(
+                'IMAP sync failed for account "mail-1", folder "INBOX": Could not fetch IMAP messages for folder "INBOX" after UID 40 (limit 101). Cause: unexpected server response.',
+                $error->getMessage(),
+            );
+            self::assertInstanceOf(TemporarySourceException::class, $error->getPrevious());
+        }
+    }
+
     public function testStreamsIncludeMultipleFolders(): void
     {
         $gateway = new FakeGateway();
@@ -148,6 +190,7 @@ final class FakeGateway implements ImapGateway
     public array $messages = [];
     /** @var list<int> */
     public array $requestedAfter = [];
+    public ?TemporarySourceException $messageError = null;
 
     public function connect(ImapConfiguration $configuration): void {}
     public function folders(): array
@@ -161,6 +204,9 @@ final class FakeGateway implements ImapGateway
     public function messagesAfter(string $folderId, int $lastUid, int $limit): array
     {
         $this->requestedAfter = [$lastUid, $limit];
+        if ($this->messageError !== null) {
+            throw $this->messageError;
+        }
         return array_slice(array_values(array_filter(
             $this->messages,
             static fn (MessageData $message): bool => $message->uid > $lastUid,
