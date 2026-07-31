@@ -1,0 +1,26 @@
+{
+  "name": "threadmesh/dashboard",
+  "description": "Read-only Nette and Bootstrap dashboard for ThreadMesh mail.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": "^8.2",
+    "ext-json": "*",
+    "ezyang/htmlpurifier": "^4.19",
+    "latte/latte": "^3.0",
+    "nette/application": "^3.2",
+    "nette/bootstrap": "^3.2",
+    "nette/di": "^3.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "ThreadMesh\\Dashboard\\": "app/"
+    }
+  },
+  "config": {
+    "platform": {
+      "php": "8.2.0"
+    },
+    "sort-packages": true
+  }
+}

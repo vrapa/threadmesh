@@ -119,6 +119,31 @@ final class WebklexImapGateway implements ImapGateway
         }
     }
 
+    public function messagesSinceAfter(string $folderId, DateTimeImmutable $since, int $lastUid, int $limit): array
+    {
+        try {
+            $query = $this->requireFolder($folderId)
+                ->messages()
+                ->whereUid(($lastUid + 1) . ':*')
+                ->since($since->format('d.m.Y'))
+                ->limit($limit)
+                ->leaveUnread()
+                ->setFetchFlags(false)
+                ->fetchOrderAsc();
+
+            $messages = [];
+            foreach ($query->get() as $message) {
+                if ($message instanceof Message) {
+                    $messages[] = $this->mapMessage($message);
+                }
+            }
+            usort($messages, static fn (MessageData $a, MessageData $b): int => $a->uid <=> $b->uid);
+            return $messages;
+        } catch (Throwable $error) {
+            throw $this->translate($error, 'Could not fetch historical IMAP messages.');
+        }
+    }
+
     public function downloadAttachment(string $folderId, int $uid, string $partId)
     {
         try {

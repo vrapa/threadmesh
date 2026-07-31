@@ -1,0 +1,8 @@
+application:
+    mapping:
+        *: ThreadMesh\Dashboard\Presenters\*Presenter
+
+services:
+    router: ThreadMesh\Dashboard\Router\RouterFactory::createRouter()
+    - ThreadMesh\Dashboard\Model\ThreadMeshApi(%threadmeshApiUrl%, %threadmeshApiToken%)
+    - ThreadMesh\Dashboard\Model\EmailHtmlSanitizer

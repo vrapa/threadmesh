@@ -1,0 +1,38 @@
+{block title}{$email['title'] ?: 'Detail zprávy'}{/block}
+{block content}
+<a n:href="Dashboard:default" class="btn btn-sm btn-outline-secondary mb-4">← Zpět na přehled</a>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4 p-lg-5">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge text-bg-{$email['importance_class']}">{$email['importance_label']}</span>
+            {if $email['requires_action']}<span class="badge text-bg-dark">Vyžaduje akci</span>{/if}
+            {if $email['category']}<span class="badge bg-body-secondary text-body">{$email['category']}</span>{/if}
+        </div>
+        <h1 class="h3 mb-3">{$email['title'] ?: '(bez předmětu)'}</h1>
+        <dl class="row mb-0">
+            <dt class="col-sm-2">Od</dt>
+            <dd class="col-sm-10">{$email['author']['displayName'] ?? $email['author']['address'] ?? 'Neznámý odesílatel'}{ifset $email['author']['address']} &lt;{$email['author']['address']}&gt;{/ifset}</dd>
+            <dt class="col-sm-2">Datum</dt>
+            <dd class="col-sm-10">{$email['source_created_at']|date:'j. n. Y H:i'}</dd>
+            {if $email['summary']}<dt class="col-sm-2">Shrnutí</dt><dd class="col-sm-10">{$email['summary']}</dd>{/if}
+            {if $email['recommended_action']}<dt class="col-sm-2">Doporučení</dt><dd class="col-sm-10">{$email['recommended_action']}</dd>{/if}
+            {if $email['due_at']}<dt class="col-sm-2">Termín</dt><dd class="col-sm-10">{$email['due_at']|date:'j. n. Y H:i'}</dd>{/if}
+            {if $email['amount']}<dt class="col-sm-2">Částka</dt><dd class="col-sm-10">{$email['amount']} {$email['currency']}</dd>{/if}
+        </dl>
+        {if $email['attachments'] ?? []}
+            <h2 class="h6 mt-4">Přílohy</h2>
+            <ul class="mb-0">
+                {foreach $email['attachments'] as $attachment}
+                    <li>{$attachment['name']} <span class="text-body-secondary">({$attachment['mediaType']})</span></li>
+                {/foreach}
+            </ul>
+        {/if}
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="card-header bg-white py-3"><h2 class="h5 mb-0">Obsah zprávy</h2></div>
+    <iframe class="message-frame w-100 border-0" sandbox title="Bezpečný náhled obsahu e-mailu" src="{link Dashboard:content id: $email['id']}"></iframe>
+</div>
+{/block}

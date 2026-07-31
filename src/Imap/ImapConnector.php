@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace ThreadMesh\Imap;
 
 use Throwable;
-use ThreadMesh\Contract\SourceConnector;
+use ThreadMesh\Contract\HistoricalSourceConnector;
 use ThreadMesh\Domain\ConnectionTestResult;
+use ThreadMesh\Domain\HistoricalSyncRequest;
+use ThreadMesh\Domain\HistoricalSyncResult;
 use ThreadMesh\Domain\SourceStream;
 use ThreadMesh\Domain\SyncCursor;
 use ThreadMesh\Domain\SyncRequest;
@@ -19,7 +21,7 @@ use ThreadMesh\Imap\Cursor\ImapCursor;
 use ThreadMesh\Imap\Cursor\ImapCursorCodec;
 use ThreadMesh\Imap\Mapping\MessageMapper;
 
-final class ImapConnector implements SourceConnector
+final class ImapConnector implements HistoricalSourceConnector
 {
     public function __construct(
         private readonly ImapConfiguration $configuration,
@@ -113,6 +115,48 @@ final class ImapConnector implements SourceConnector
         }
 
         return new SyncResult(
+            $items,
+            $this->cursors->encode(new ImapCursor($cursor->uidValidity, $lastUid)),
+            $hasMore,
+        );
+    }
+
+    public function synchronizeHistory(HistoricalSyncRequest $request): HistoricalSyncResult
+    {
+        $this->gateway->connect($this->configuration);
+        $status = $this->gateway->status($request->stream->id);
+        $cursor = $request->cursor !== null
+            ? $this->cursors->decode($request->cursor)
+            : new ImapCursor($status->uidValidity, 0);
+        if ($status->uidValidity !== $cursor->uidValidity) {
+            throw new TemporarySourceException(sprintf(
+                'UIDVALIDITY changed for folder "%s". Restart this historical import without its cursor.',
+                $request->stream->id,
+            ));
+        }
+
+        $messages = $this->gateway->messagesSinceAfter(
+            $request->stream->id,
+            $request->since,
+            $cursor->lastUid,
+            $request->limit + 1,
+        );
+        $hasMore = count($messages) > $request->limit;
+        $batch = array_slice($messages, 0, $request->limit);
+        $lastUid = $cursor->lastUid;
+        $items = [];
+        foreach ($batch as $message) {
+            if ($message->uid <= $lastUid) {
+                continue;
+            }
+            $lastUid = $message->uid;
+            if ($message->date < $request->since) {
+                continue;
+            }
+            $items[] = $this->mapper->map($this->configuration->accountId, $request->stream->id, $message);
+        }
+
+        return new HistoricalSyncResult(
             $items,
             $this->cursors->encode(new ImapCursor($cursor->uidValidity, $lastUid)),
             $hasMore,

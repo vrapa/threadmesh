@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace ThreadMesh\Mail;
 
+use DateTimeImmutable;
 use RuntimeException;
 use SensitiveParameter;
+use ThreadMesh\Application\BackfillStream;
 use ThreadMesh\Application\InitializeAccount;
 use ThreadMesh\Application\SynchronizeStream;
 use ThreadMesh\Contract\ConnectorProvider;
 use ThreadMesh\Domain\SourceStream;
+use ThreadMesh\Domain\SyncCursor;
 use ThreadMesh\Storage\SqliteStore;
 use ThreadMesh\Storage\SqliteConnectorProvider;
 use ThreadMesh\Imap\ImapDraftWriter;
@@ -23,6 +26,7 @@ final class ThreadMeshService
         private readonly SynchronizeStream $synchronizer,
         private readonly SqliteConnectorProvider $imapConnections,
         private readonly ImapDraftWriter $draftWriter,
+        private readonly BackfillStream $backfiller,
     ) {
     }
 
@@ -102,6 +106,61 @@ final class ThreadMeshService
     public function unassessedEmails(int $limit = 20): array
     {
         return $this->store->unassessedEmails($this->limit($limit));
+    }
+
+    /**
+     * @param list<string> $importance
+     * @return list<array<string, mixed>>
+     */
+    public function mailbox(
+        DateTimeImmutable $since,
+        ?DateTimeImmutable $until = null,
+        ?string $accountId = null,
+        array $importance = [],
+        ?bool $assessed = null,
+        ?bool $requiresAction = null,
+        int $limit = 100,
+    ): array {
+        if ($until !== null && $until <= $since) {
+            throw new RuntimeException('until must be later than since.');
+        }
+        foreach ($importance as $value) {
+            if (!in_array($value, ['low', 'normal', 'high', 'critical'], true)) {
+                throw new RuntimeException('Importance must be low, normal, high, or critical.');
+            }
+        }
+        return $this->store->mailboxEmails(
+            $since,
+            $until,
+            $accountId,
+            array_values(array_unique($importance)),
+            $assessed,
+            $requiresAction,
+            $this->limit($limit, 200),
+        );
+    }
+
+    /** @return array{items:int, hasMore:bool, cursor:string, since:string} */
+    public function backfill(
+        string $accountId,
+        string $streamId,
+        DateTimeImmutable $since,
+        ?string $cursor = null,
+        int $batchSize = 100,
+    ): array {
+        $result = $this->backfiller->execute(
+            $accountId,
+            $streamId,
+            $since,
+            $cursor !== null ? new SyncCursor($cursor) : null,
+            $this->limit($batchSize, 500),
+        );
+        return [
+            'items' => count($result->items),
+            'hasMore' => $result->hasMore,
+            'cursor' => $result->nextCursor->value,
+            'since' => $since->format(DATE_ATOM),
+        ];
     }
 
     /** @return array<string, mixed> */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ThreadMesh\Imap\Client;
 
+use DateTimeImmutable;
 use ThreadMesh\Imap\ImapConfiguration;
 
 interface ImapGateway
@@ -17,6 +18,9 @@ interface ImapGateway
 
     /** @return list<MessageData> ordered by ascending UID */
     public function messagesAfter(string $folderId, int $lastUid, int $limit): array;
+
+    /** @return list<MessageData> ordered by ascending UID */
+    public function messagesSinceAfter(string $folderId, DateTimeImmutable $since, int $lastUid, int $limit): array;
 
     /** @return resource */
     public function downloadAttachment(string $folderId, int $uid, string $partId);

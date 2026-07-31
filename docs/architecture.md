@@ -14,11 +14,12 @@ The API configures accounts and exposes stored data. MCP exposes only mail synch
 ## Synchronization invariants
 
 1. Initialization stores the current IMAP high-water UID and imports no history.
-2. Messages are read with PEEK and do not become read or have their flags changed.
-3. `SourceReference` provides an idempotent unique identity.
-4. Items and the next cursor are stored in one SQLite transaction.
-5. A changed UIDVALIDITY stops the stream instead of silently duplicating or skipping mail.
-6. Attachments are represented by metadata and remain on IMAP until requested.
+2. Historical import is explicit, bounded, independently paged, and never moves the live synchronization cursor.
+3. Messages are read with PEEK and do not become read or have their flags changed.
+4. `SourceReference` provides an idempotent unique identity.
+5. Items and the next live cursor are stored in one SQLite transaction; historical pages store their items transactionally without changing live state.
+6. A changed UIDVALIDITY stops the stream instead of silently duplicating or skipping mail.
+7. Attachments are represented by metadata and remain on IMAP until requested.
 
 ## Write boundary
 

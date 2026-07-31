@@ -6,6 +6,8 @@ Docker Compose je nejjednodušší jednotný způsob lokálního spuštění na 
 - `mcp` zpřístupní MCP na `http://127.0.0.1:8081/mcp`;
 - oba používají společný named volume `threadmesh-data` se SQLite databází.
 
+Volitelný dashboard běží jako samostatný Compose projekt, čte poštu pouze přes API a je dostupný na `http://threadmesh.loc/dashboard/` nebo přes záložní loopback adresu `http://127.0.0.1:8082/dashboard/`. Podrobnosti uvádí [návod k dashboardu](dashboard.cs.md).
+
 Konfigurace je určena pro lokální provoz. Porty jsou na hostiteli navázané pouze na `127.0.0.1`. Bez autentizované HTTPS brány je nikdy nevystavujte do internetu.
 
 ## Požadavky
@@ -66,6 +68,7 @@ Pokud jsou výchozí porty obsazené, nastavte v `.env`:
 ```text
 THREADMESH_API_PORT=18080
 THREADMESH_MCP_PORT=18081
+THREADMESH_DASHBOARD_PORT=18082
 ```
 
 Mění se pouze porty hostitele. Uvnitř kontejnerů zůstávají 8080 a 8081.

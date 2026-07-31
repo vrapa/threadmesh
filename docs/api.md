@@ -25,7 +25,9 @@ Content-Type: application/json
 | `POST` | `/v1/accounts/{id}/test` | Test IMAP authentication and connectivity |
 | `GET` | `/v1/accounts/{id}/folders` | Discover selectable IMAP folders |
 | `POST` | `/v1/accounts/{id}/initialize` | Initialize selected folders at their current highest UID |
+| `POST` | `/v1/accounts/{id}/backfill` | Explicitly import one page of historical mail |
 | `POST` | `/v1/sync` | Synchronize one bounded batch from enabled folders |
+| `GET` | `/v1/mailbox` | List email overview records within a time range |
 | `GET` | `/v1/emails?limit=20` | List emails without a stored assessment |
 | `GET` | `/v1/emails/{id}` | Read one stored email and assessment |
 | `POST` | `/v1/emails/{id}/assessment` | Store or replace a structured assessment |
@@ -74,6 +76,52 @@ Synchronize all initialized accounts with an empty JSON object, or select one ac
 ```
 
 If `hasMore` is true, repeat synchronization until it becomes false. Cursor advancement and item persistence are transactional.
+
+## Import recent history
+
+Normal initialization deliberately imports no history and remains unchanged. Use the explicit backfill operation when a new installation needs recent messages:
+
+```json
+{
+  "streamId": "INBOX",
+  "days": 7,
+  "batchSize": 100
+}
+```
+
+`days` must be between 1 and 31. An exact ISO 8601 `since` timestamp may be used instead. The response contains the normalized `since`, an opaque `cursor`, and `hasMore`. When `hasMore` is true, repeat the request with the same `since` and the returned cursor:
+
+```json
+{
+  "streamId": "INBOX",
+  "since": "2026-07-24T08:00:00+00:00",
+  "batchSize": 100,
+  "cursor": "<cursor returned by the previous response>"
+}
+```
+
+Backfill reads with PEEK, does not change message flags, and never moves the normal synchronization cursor. Each page is persisted transactionally and stable source references make repeated pages idempotent. If UIDVALIDITY changes, restart the historical import without its cursor.
+
+## List the mailbox overview
+
+`GET /v1/mailbox` returns compact overview records rather than full message bodies. It defaults to the last seven days and includes both assessed and unassessed mail.
+
+Supported query parameters are:
+
+- `since` and `until` as ISO 8601 timestamps;
+- `accountId`;
+- comma-separated `importance` values (`low`, `normal`, `high`, `critical`);
+- `assessed=true|false`;
+- `requiresAction=true|false`;
+- `limit`, capped at 200.
+
+For example:
+
+```http
+GET /v1/mailbox?since=2026-07-24T00:00:00Z&importance=high,critical&limit=100
+```
+
+The overview contains sender metadata, subject, source timestamp, assessment status, importance, category, summary, and recommended action. Fetch `GET /v1/emails/{id}` only when the full stored body is needed.
 
 ## Store an assessment
 

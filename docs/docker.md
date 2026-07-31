@@ -6,6 +6,8 @@ Docker Compose provides the simplest consistent local runtime on Windows, Linux,
 - `mcp` exposes MCP at `http://127.0.0.1:8081/mcp`;
 - both share the `threadmesh-data` named volume containing SQLite.
 
+The optional dashboard runs as a separate Compose project, reads mail only through the API, and is available at `http://threadmesh.loc/dashboard/` or the loopback fallback `http://127.0.0.1:8082/dashboard/`. See the [dashboard guide](dashboard.md).
+
 This configuration is intended for local use. The host ports bind only to `127.0.0.1` and must not be changed to a public interface without an authenticated HTTPS gateway.
 
 ## Requirements
@@ -66,6 +68,7 @@ Override host ports in `.env` when defaults are occupied:
 ```text
 THREADMESH_API_PORT=18080
 THREADMESH_MCP_PORT=18081
+THREADMESH_DASHBOARD_PORT=18082
 ```
 
 Only the host-side port changes. The container ports remain 8080 and 8081.

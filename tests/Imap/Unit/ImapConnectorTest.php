@@ -191,6 +191,8 @@ final class FakeGateway implements ImapGateway
     /** @var list<int> */
     public array $requestedAfter = [];
     public ?TemporarySourceException $messageError = null;
+    /** @var list<array{int, int}> */
+    public array $requestedSinceAfter = [];
 
     public function connect(ImapConfiguration $configuration): void {}
     public function folders(): array
@@ -207,6 +209,14 @@ final class FakeGateway implements ImapGateway
         if ($this->messageError !== null) {
             throw $this->messageError;
         }
+        return array_slice(array_values(array_filter(
+            $this->messages,
+            static fn (MessageData $message): bool => $message->uid > $lastUid,
+        )), 0, $limit);
+    }
+    public function messagesSinceAfter(string $folderId, DateTimeImmutable $since, int $lastUid, int $limit): array
+    {
+        $this->requestedSinceAfter[] = [$lastUid, $limit];
         return array_slice(array_values(array_filter(
             $this->messages,
             static fn (MessageData $message): bool => $message->uid > $lastUid,
