@@ -217,6 +217,71 @@ SQL);
         return $emails;
     }
 
+    /**
+     * @param list<string> $importance
+     * @return list<array<string, mixed>>
+     */
+    public function mailboxEmails(
+        DateTimeImmutable $since,
+        ?DateTimeImmutable $until = null,
+        ?string $accountId = null,
+        array $importance = [],
+        ?bool $assessed = null,
+        ?bool $requiresAction = null,
+        int $limit = 100,
+    ): array {
+        $where = ['i.type = :type', 'julianday(i.source_created_at) >= julianday(:since)'];
+        $parameters = ['type' => 'email', 'since' => $since->format(DATE_ATOM), 'limit' => $limit];
+        if ($until !== null) {
+            $where[] = 'julianday(i.source_created_at) < julianday(:until)';
+            $parameters['until'] = $until->format(DATE_ATOM);
+        }
+        if ($accountId !== null) {
+            $where[] = 'i.account_id = :account_id';
+            $parameters['account_id'] = $accountId;
+        }
+        if ($importance !== []) {
+            $placeholders = [];
+            foreach ($importance as $index => $value) {
+                $parameter = 'importance_' . $index;
+                $placeholders[] = ':' . $parameter;
+                $parameters[$parameter] = $value;
+            }
+            $where[] = 'a.importance IN (' . implode(', ', $placeholders) . ')';
+        }
+        if ($assessed !== null) {
+            $where[] = $assessed ? 'a.email_id IS NOT NULL' : 'a.email_id IS NULL';
+        }
+        if ($requiresAction !== null) {
+            $where[] = 'a.requires_action = :requires_action';
+            $parameters['requires_action'] = $requiresAction ? 1 : 0;
+        }
+
+        $sql = <<<'SQL'
+SELECT i.id, i.account_id, i.title, i.status, i.author_json, i.source_created_at,
+       a.importance, a.category, a.summary, a.requires_action, a.due_at,
+       a.amount, a.currency, a.recommended_action, a.reason, a.assessed_at,
+       CASE WHEN a.email_id IS NULL THEN 0 ELSE 1 END AS assessed
+FROM items i
+LEFT JOIN assessments a ON a.email_id = i.id
+SQL;
+        $rows = $this->fetchAll(
+            $sql . ' WHERE ' . implode(' AND ', $where) . ' ORDER BY julianday(i.source_created_at) DESC, i.id DESC LIMIT :limit',
+            $parameters,
+        );
+        foreach ($rows as &$row) {
+            $author = $row['author_json'] ?? null;
+            $row['author'] = is_string($author) ? json_decode($author, true) : null;
+            unset($row['author_json']);
+            $row['assessed'] = (bool) ($row['assessed'] ?? false);
+            if ($row['requires_action'] !== null) {
+                $row['requires_action'] = (bool) $row['requires_action'];
+            }
+        }
+        unset($row);
+        return $rows;
+    }
+
     /** @return array<string, mixed>|null */
     public function email(string $id): ?array
     {

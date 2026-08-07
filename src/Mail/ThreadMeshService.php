@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace ThreadMesh\Mail;
 
+use DateTimeImmutable;
 use RuntimeException;
 use SensitiveParameter;
+use ThreadMesh\Application\BackfillStream;
 use ThreadMesh\Application\InitializeAccount;
 use ThreadMesh\Application\SynchronizeStream;
 use ThreadMesh\Contract\ConnectorProvider;
 use ThreadMesh\Domain\SourceStream;
+use ThreadMesh\Domain\SyncCursor;
 use ThreadMesh\Storage\SqliteStore;
 use ThreadMesh\Storage\SqliteConnectorProvider;
 use ThreadMesh\Imap\ImapDraftWriter;
 
 final class ThreadMeshService
 {
+    private readonly MailHeaderNormalizer $headers;
     public function __construct(
         private readonly SqliteStore $store,
         private readonly ConnectorProvider $connectors,
@@ -23,7 +27,10 @@ final class ThreadMeshService
         private readonly SynchronizeStream $synchronizer,
         private readonly SqliteConnectorProvider $imapConnections,
         private readonly ImapDraftWriter $draftWriter,
+        private readonly BackfillStream $backfiller,
+        ?MailHeaderNormalizer $headers = null,
     ) {
+        $this->headers = $headers ?? new MailHeaderNormalizer();
     }
 
     /** @param array<string, scalar|null> $configuration */
@@ -101,13 +108,69 @@ final class ThreadMeshService
     /** @return list<array<string, mixed>> */
     public function unassessedEmails(int $limit = 20): array
     {
-        return $this->store->unassessedEmails($this->limit($limit));
+        return $this->headers->emails($this->store->unassessedEmails($this->limit($limit)));
+    }
+
+    /**
+     * @param list<string> $importance
+     * @return list<array<string, mixed>>
+     */
+    public function mailbox(
+        DateTimeImmutable $since,
+        ?DateTimeImmutable $until = null,
+        ?string $accountId = null,
+        array $importance = [],
+        ?bool $assessed = null,
+        ?bool $requiresAction = null,
+        int $limit = 100,
+    ): array {
+        if ($until !== null && $until <= $since) {
+            throw new RuntimeException('until must be later than since.');
+        }
+        foreach ($importance as $value) {
+            if (!in_array($value, ['low', 'normal', 'high', 'critical'], true)) {
+                throw new RuntimeException('Importance must be low, normal, high, or critical.');
+            }
+        }
+        return $this->headers->emails($this->store->mailboxEmails(
+            $since,
+            $until,
+            $accountId,
+            array_values(array_unique($importance)),
+            $assessed,
+            $requiresAction,
+            $this->limit($limit, 200),
+        ));
+    }
+
+    /** @return array{items:int, hasMore:bool, cursor:string, since:string} */
+    public function backfill(
+        string $accountId,
+        string $streamId,
+        DateTimeImmutable $since,
+        ?string $cursor = null,
+        int $batchSize = 100,
+    ): array {
+        $result = $this->backfiller->execute(
+            $accountId,
+            $streamId,
+            $since,
+            $cursor !== null ? new SyncCursor($cursor) : null,
+            $this->limit($batchSize, 500),
+        );
+        return [
+            'items' => count($result->items),
+            'hasMore' => $result->hasMore,
+            'cursor' => $result->nextCursor->value,
+            'since' => $since->format(DATE_ATOM),
+        ];
     }
 
     /** @return array<string, mixed> */
     public function email(string $id): array
     {
-        return $this->store->email($id) ?? throw new RuntimeException('Email was not found.');
+        $email = $this->store->email($id) ?? throw new RuntimeException('Email was not found.');
+        return $this->headers->email($email);
     }
 
     public function assess(
@@ -139,7 +202,7 @@ final class ThreadMeshService
     /** @return list<array<string, mixed>> */
     public function alerts(int $limit = 50): array
     {
-        return $this->store->alerts($this->limit($limit, 200));
+        return $this->headers->emails($this->store->alerts($this->limit($limit, 200)));
     }
 
     /** @return array<string, mixed> */

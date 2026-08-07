@@ -1,0 +1,41 @@
+name: threadmesh-dashboard
+
+services:
+  dashboard:
+    build:
+      context: apps/dashboard
+    image: threadmesh-dashboard:local
+    container_name: threadmesh-dashboard-ui
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/temp:uid=10002,gid=10002,mode=0770
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      THREADMESH_API_URL: http://api:8080
+      THREADMESH_API_TOKEN: ${THREADMESH_API_TOKEN:-}
+    networks:
+      - threadmesh
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dev-proxy"
+      - "traefik.http.routers.threadmesh-dashboard.rule=Host(`threadmesh.loc`) && PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.threadmesh-dashboard.entrypoints=web"
+      - "traefik.http.routers.threadmesh-dashboard.priority=200"
+      - "traefik.http.services.threadmesh-dashboard.loadbalancer.server.port=8082"
+    ports:
+      - "127.0.0.1:${THREADMESH_DASHBOARD_PORT:-8082}:8082"
+
+networks:
+  threadmesh:
+    external: true
+    name: threadmesh_default
+  proxy:
+    external: true
+    name: dev-proxy

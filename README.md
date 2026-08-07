@@ -13,7 +13,9 @@ ThreadMesh is a self-hosted, API-first PHP toolkit for reading new IMAP email an
 - One-file SQLite persistence with idempotent email upserts.
 - XChaCha20-Poly1305 encryption of IMAP passwords using a key kept outside the database.
 - Bearer-protected HTTP JSON API for configuration and application access.
+- Explicit, paged import of recent history without moving the live synchronization cursor.
 - Local streamable HTTP MCP server with seven tools for ChatGPT/Codex automation.
+- Optional read-only Nette and Bootstrap dashboard with priority filters and a sandboxed message preview.
 - Local assessments, alerts, invoice metadata, and reply drafts.
 - Optional, explicitly confirmed append to a configured IMAP Drafts folder. ThreadMesh cannot send email.
 
@@ -97,6 +99,8 @@ For programmatic setup, send `POST /v1/accounts` with a bearer token:
 
 Then test `/v1/accounts/work/test`, inspect `/v1/accounts/work/folders`, and initialize selected folders through `/v1/accounts/work/initialize`. Initialization starts at the current highest UID, so existing history is not imported.
 
+A new installation may explicitly import recent history through `/v1/accounts/work/backfill`. Applications can read a compact, assessment-aware seven-day overview from `/v1/mailbox`; see the [HTTP API guide](docs/api.md).
+
 ## MCP and AI automation
 
 Start the MCP endpoint on `http://127.0.0.1:8081/mcp`:
@@ -117,9 +121,13 @@ See the [MCP guide](docs/mcp.md), [automation guide](docs/automation.md), and [r
 
 Applications may use `ThreadMesh\Bootstrap`, the lower-level application services, or individual contracts without running either server. Storage and IMAP are included adapters, while normalized `Item` values and connector contracts remain suitable for later Jira and Bitbucket providers.
 
+## Mail dashboard
+
+The optional dashboard is a separate Nette application under `apps/dashboard`; it does not add a web framework dependency to the provider-neutral core. Start it with `docker compose -f compose.dashboard.yaml up -d --build`, then open `http://threadmesh.loc/dashboard/`. See the [dashboard guide](docs/dashboard.md) for features and security details.
+
 ## Current limitations
 
-ThreadMesh is an early alpha intended for local evaluation and integration work. It currently has no historical import, OAuth, SMTP sending, full-text search, web UI, or multi-user authorization. Authentication uses an IMAP password or app password. Attachments are represented by metadata and are not stored as binary data. AI classifications are external agent conclusions and must not be treated as verification of a sender, invoice, link, or attachment.
+ThreadMesh is an early alpha intended for local evaluation and integration work. It currently has no OAuth, SMTP sending, full-text search, or multi-user authorization. The optional dashboard is intended for loopback-only local use. Authentication uses an IMAP password or app password. Attachments are represented by metadata and are not stored as binary data. AI classifications are external agent conclusions and must not be treated as verification of a sender, invoice, link, or attachment.
 
 ## Commercial support
 

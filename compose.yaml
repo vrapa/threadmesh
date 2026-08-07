@@ -24,6 +24,16 @@ services:
   api:
     <<: *threadmesh-common
     command: ["php", "-S", "0.0.0.0:8080", "-t", "public", "public/router.php"]
+    networks:
+      - default
+      - dev-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dev-proxy"
+      - "traefik.http.routers.threadmesh-api.rule=Host(`threadmesh.loc`)"
+      - "traefik.http.routers.threadmesh-api.entrypoints=web"
+      - "traefik.http.routers.threadmesh-api.priority=10"
+      - "traefik.http.services.threadmesh-api.loadbalancer.server.port=8080"
     ports:
       - "127.0.0.1:${THREADMESH_API_PORT:-8080}:8080"
     healthcheck:
@@ -36,6 +46,16 @@ services:
   mcp:
     <<: *threadmesh-common
     command: ["php", "bin/threadmesh-mcp"]
+    networks:
+      - default
+      - dev-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dev-proxy"
+      - "traefik.http.routers.threadmesh-mcp.rule=Host(`threadmesh.loc`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.threadmesh-mcp.entrypoints=web"
+      - "traefik.http.routers.threadmesh-mcp.priority=100"
+      - "traefik.http.services.threadmesh-mcp.loadbalancer.server.port=8081"
     environment:
       THREADMESH_MASTER_KEY: ${THREADMESH_MASTER_KEY:-}
       THREADMESH_DB: /app/var/threadmesh.sqlite
@@ -49,3 +69,8 @@ services:
 
 volumes:
   threadmesh-data:
+
+networks:
+  dev-proxy:
+    external: true
+    name: dev-proxy

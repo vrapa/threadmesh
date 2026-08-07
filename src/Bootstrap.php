@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ThreadMesh;
 
+use ThreadMesh\Application\BackfillStream;
 use ThreadMesh\Application\InitializeAccount;
 use ThreadMesh\Application\SynchronizeStream;
 use ThreadMesh\Mail\ThreadMeshService;
@@ -28,6 +29,7 @@ final class Bootstrap
             new SynchronizeStream($store, $connectors, $store, $store, $store, $store),
             $connectors,
             new ImapDraftWriter(),
+            new BackfillStream($store, $connectors, $store, $store, $store),
         );
     }
 

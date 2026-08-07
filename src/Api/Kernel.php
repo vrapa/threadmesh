@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace ThreadMesh\Api;
 
+use DateInterval;
+use DateTimeImmutable;
+use DateTimeZone;
 use JsonException;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -82,6 +85,26 @@ final class Kernel
             }
             return $this->json(['cursors' => $this->service->initialize(rawurldecode($matches[1]), $streamIds)]);
         }
+        if ($method === 'POST' && preg_match('#^/v1/accounts/([^/]+)/backfill$#', $path, $matches) === 1) {
+            $data = $this->body($request, true);
+            $sinceValue = $this->nullableString($data, 'since');
+            if ($sinceValue !== null) {
+                $since = $this->dateTime($sinceValue, 'since');
+            } else {
+                $days = $this->integer($data, 'days', 7);
+                if ($days < 1 || $days > 31) {
+                    throw new RuntimeException('days must be between 1 and 31.');
+                }
+                $since = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->sub(new DateInterval('P' . $days . 'D'));
+            }
+            return $this->json($this->service->backfill(
+                rawurldecode($matches[1]),
+                $this->nullableString($data, 'streamId') ?? 'INBOX',
+                $since,
+                $this->nullableString($data, 'cursor'),
+                $this->integer($data, 'batchSize', 100),
+            ));
+        }
         if ($method === 'POST' && $path === '/v1/sync') {
             $data = $this->body($request, true);
             return $this->json($this->service->sync(
@@ -91,6 +114,23 @@ final class Kernel
         }
         if ($method === 'GET' && $path === '/v1/emails') {
             return $this->json(['emails' => $this->service->unassessedEmails($this->queryInteger($request, 'limit', 20))]);
+        }
+        if ($method === 'GET' && $path === '/v1/mailbox') {
+            $sinceValue = $request->query->get('since');
+            $since = is_string($sinceValue) && $sinceValue !== ''
+                ? $this->dateTime($sinceValue, 'since')
+                : (new DateTimeImmutable('now', new DateTimeZone('UTC')))->sub(new DateInterval('P7D'));
+            $untilValue = $request->query->get('until');
+            $importanceValue = $request->query->get('importance', '');
+            return $this->json(['emails' => $this->service->mailbox(
+                $since,
+                is_string($untilValue) && $untilValue !== '' ? $this->dateTime($untilValue, 'until') : null,
+                $this->queryNullableString($request, 'accountId'),
+                $importanceValue !== '' ? explode(',', $importanceValue) : [],
+                $this->queryNullableBoolean($request, 'assessed'),
+                $this->queryNullableBoolean($request, 'requiresAction'),
+                $this->queryInteger($request, 'limit', 100),
+            )]);
         }
         if ($method === 'GET' && preg_match('#^/v1/emails/([a-f0-9]+)$#', $path, $matches) === 1) {
             return $this->json(['email' => $this->service->email($matches[1])]);
@@ -229,6 +269,42 @@ final class Kernel
             throw new RuntimeException(sprintf('%s must be a positive integer.', $key));
         }
         return (int) $value;
+    }
+
+    private function queryNullableString(Request $request, string $key): ?string
+    {
+        $value = $request->query->get($key);
+        if ($value === null || $value === '') {
+            return null;
+        }
+        return $value;
+    }
+
+    private function queryNullableBoolean(Request $request, string $key): ?bool
+    {
+        $value = $request->query->get($key);
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if ($value === 'true' || $value === '1') {
+            return true;
+        }
+        if ($value === 'false' || $value === '0') {
+            return false;
+        }
+        throw new RuntimeException(sprintf('%s must be true or false.', $key));
+    }
+
+    private function dateTime(string $value, string $key): DateTimeImmutable
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/D', $value) !== 1) {
+            throw new RuntimeException(sprintf('%s must be an ISO 8601 timestamp.', $key));
+        }
+        try {
+            return new DateTimeImmutable($value);
+        } catch (\Exception) {
+            throw new RuntimeException(sprintf('%s must be an ISO 8601 timestamp.', $key));
+        }
     }
 
     /**

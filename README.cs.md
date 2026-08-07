@@ -13,7 +13,9 @@ ThreadMesh je self-hosted PHP nástroj pro čtení nových IMAP e-mailů a jejic
 - SQLite databázi v jednom souboru a idempotentní ukládání e-mailů.
 - Šifrování IMAP hesel pomocí XChaCha20-Poly1305.
 - HTTP JSON API chráněné Bearer tokenem.
+- Výslovný stránkovaný import nedávné historie bez posunu živého synchronizačního kurzoru.
 - Lokální streamable HTTP MCP server pro Codex a další MCP klienty.
+- Volitelné Nette a Bootstrap UI pro čtení schránky, filtrování priorit a bezpečný náhled zpráv.
 - Hodnocení e-mailů, upozornění, údaje o fakturách a lokální koncepty.
 - Volitelné uložení potvrzeného konceptu do IMAP Drafts. ThreadMesh neumí e-mail odeslat.
 
@@ -97,6 +99,8 @@ Pro programové nastavení použijte `POST /v1/accounts`:
 
 Následně otestujte `/v1/accounts/work/test`, načtěte seznam složek z `/v1/accounts/work/folders` a vybrané složky inicializujte přes `/v1/accounts/work/initialize`. Inicializace začne na aktuálním nejvyšším UID, takže se neimportuje starší historie.
 
+Na nové instalaci lze poslední zprávy výslovně načíst přes `/v1/accounts/work/backfill`. Stručný přehled e-mailů a jejich hodnocení za posledních sedm dní poskytuje `/v1/mailbox`; podrobnosti jsou v [českém popisu HTTP API](docs/api.cs.md).
+
 ## MCP a automatizace
 
 MCP server spusťte na `http://127.0.0.1:8081/mcp`:
@@ -121,9 +125,13 @@ composer check
 
 Projekt je dostupný pod [MIT licencí](LICENSE). Další dokumentace: [HTTP API](docs/api.md), [Docker](docs/docker.cs.md), [architektura](docs/architecture.md), [bezpečnost](SECURITY.md) a [přispívání](CONTRIBUTING.md).
 
+## Mailový dashboard
+
+Volitelný dashboard je samostatná Nette aplikace v `apps/dashboard`, takže providerově neutrální jádro nezískává závislost na webovém frameworku. Spusťte ho příkazem `docker compose -f compose.dashboard.yaml up -d --build` a otevřete `http://threadmesh.loc/dashboard/`. Funkce a bezpečnost popisuje [návod k dashboardu](docs/dashboard.cs.md).
+
 ## Současná omezení
 
-ThreadMesh je raná alfa verze určená pro lokální ověřování a integrační práci. Zatím nepodporuje historický import, OAuth, odesílání přes SMTP, fulltextové vyhledávání, webové UI ani víceuživatelské přihlášení. Pro IMAP používá heslo nebo app password. U příloh ukládá metadata, nikoli binární obsah. Hodnocení AI agenta není ověřením odesílatele, faktury, odkazu ani přílohy.
+ThreadMesh je raná alfa verze určená pro lokální ověřování a integrační práci. Zatím nepodporuje OAuth, odesílání přes SMTP, fulltextové vyhledávání ani víceuživatelské přihlášení. Volitelný dashboard je určený pouze pro lokální provoz přes loopback. Pro IMAP používá heslo nebo app password. U příloh ukládá metadata, nikoli binární obsah. Hodnocení AI agenta není ověřením odesílatele, faktury, odkazu ani přílohy.
 
 ## Komerční podpora
 
