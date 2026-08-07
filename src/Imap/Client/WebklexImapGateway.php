@@ -12,6 +12,7 @@ use ThreadMesh\Exception\ConnectionException;
 use ThreadMesh\Exception\TemporarySourceException;
 use ThreadMesh\Exception\ThreadMeshException;
 use ThreadMesh\Imap\ImapConfiguration;
+use ThreadMesh\Imap\MimeHeaderDecoder;
 use Webklex\PHPIMAP\Attachment as WebklexAttachment;
 use Webklex\PHPIMAP\Attribute;
 use Webklex\PHPIMAP\Client;
@@ -24,6 +25,12 @@ use Webklex\PHPIMAP\Message;
 final class WebklexImapGateway implements ImapGateway
 {
     private ?Client $client = null;
+    private readonly MimeHeaderDecoder $mimeHeaders;
+
+    public function __construct(?MimeHeaderDecoder $mimeHeaders = null)
+    {
+        $this->mimeHeaders = $mimeHeaders ?? new MimeHeaderDecoder();
+    }
 
     public function connect(ImapConfiguration $configuration): void
     {
@@ -209,7 +216,7 @@ final class WebklexImapGateway implements ImapGateway
             }
             $attachments[] = new AttachmentData(
                 (string) $attachment->getPartNumber(),
-                (string) $attachment->getName(),
+                $this->mimeHeaders->decode((string) $attachment->getName()),
                 (string) $attachment->getContentType(),
                 is_numeric($attachment->getSize()) ? (int) $attachment->getSize() : null,
                 strtolower((string) $attachment->getDisposition()) === 'inline',
@@ -220,7 +227,7 @@ final class WebklexImapGateway implements ImapGateway
         return new MessageData(
             (int) $message->getUid(),
             $this->attributeString($message->getMessageId()),
-            $this->attributeString($message->getSubject()) ?? '',
+            $this->mimeHeaders->decode($this->attributeString($message->getSubject()) ?? ''),
             $this->addresses($message->getFrom()),
             $this->addresses($message->getTo()),
             $this->addresses($message->getCc()),
@@ -245,7 +252,10 @@ final class WebklexImapGateway implements ImapGateway
             $mail = $value->mail ?? null;
             $personal = $value->personal ?? null;
             if (is_string($mail) && trim($mail) !== '') {
-                $addresses[] = new EmailAddress($mail, is_string($personal) ? $personal : null);
+                $addresses[] = new EmailAddress(
+                    $mail,
+                    is_string($personal) ? $this->mimeHeaders->decode($personal) : null,
+                );
             }
         }
         return $addresses;

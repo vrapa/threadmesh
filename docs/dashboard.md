@@ -26,6 +26,7 @@ docker compose -f compose.dashboard.yaml down
 - color-coded critical, high, normal, low, and unassessed messages;
 - filters for time range, assessment state, importance, and required action;
 - subject, sender, timestamp, category, assessment summary, and recommended action;
+- UTF-8 decoding of RFC 2047 subjects, address display names, and attachment names, including previously stored messages at read time;
 - full message detail and attachment metadata;
 - sandboxed HTML message preview with scripts, forms, navigation, and remote resources blocked.
 

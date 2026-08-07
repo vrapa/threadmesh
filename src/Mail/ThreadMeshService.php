@@ -19,6 +19,7 @@ use ThreadMesh\Imap\ImapDraftWriter;
 
 final class ThreadMeshService
 {
+    private readonly MailHeaderNormalizer $headers;
     public function __construct(
         private readonly SqliteStore $store,
         private readonly ConnectorProvider $connectors,
@@ -27,7 +28,9 @@ final class ThreadMeshService
         private readonly SqliteConnectorProvider $imapConnections,
         private readonly ImapDraftWriter $draftWriter,
         private readonly BackfillStream $backfiller,
+        ?MailHeaderNormalizer $headers = null,
     ) {
+        $this->headers = $headers ?? new MailHeaderNormalizer();
     }
 
     /** @param array<string, scalar|null> $configuration */
@@ -105,7 +108,7 @@ final class ThreadMeshService
     /** @return list<array<string, mixed>> */
     public function unassessedEmails(int $limit = 20): array
     {
-        return $this->store->unassessedEmails($this->limit($limit));
+        return $this->headers->emails($this->store->unassessedEmails($this->limit($limit)));
     }
 
     /**
@@ -129,7 +132,7 @@ final class ThreadMeshService
                 throw new RuntimeException('Importance must be low, normal, high, or critical.');
             }
         }
-        return $this->store->mailboxEmails(
+        return $this->headers->emails($this->store->mailboxEmails(
             $since,
             $until,
             $accountId,
@@ -137,7 +140,7 @@ final class ThreadMeshService
             $assessed,
             $requiresAction,
             $this->limit($limit, 200),
-        );
+        ));
     }
 
     /** @return array{items:int, hasMore:bool, cursor:string, since:string} */
@@ -166,7 +169,8 @@ final class ThreadMeshService
     /** @return array<string, mixed> */
     public function email(string $id): array
     {
-        return $this->store->email($id) ?? throw new RuntimeException('Email was not found.');
+        $email = $this->store->email($id) ?? throw new RuntimeException('Email was not found.');
+        return $this->headers->email($email);
     }
 
     public function assess(
@@ -198,7 +202,7 @@ final class ThreadMeshService
     /** @return list<array<string, mixed>> */
     public function alerts(int $limit = 50): array
     {
-        return $this->store->alerts($this->limit($limit, 200));
+        return $this->headers->emails($this->store->alerts($this->limit($limit, 200)));
     }
 
     /** @return array<string, mixed> */
