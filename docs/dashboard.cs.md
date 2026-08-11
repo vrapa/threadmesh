@@ -25,7 +25,7 @@ docker compose -f compose.dashboard.yaml down
 
 - barevné odlišení kritických, vysoce důležitých, běžných, málo důležitých a nevyhodnocených zpráv;
 - filtry období, stavu hodnocení, důležitosti a požadované akce;
-- předmět, odesílatel, čas, kategorie, shrnutí hodnocení a doporučený krok;
+- předmět, odesílatel, adresáti, čas, kategorie, shrnutí hodnocení a doporučený krok;
 - UTF-8 dekódování RFC 2047 předmětů, zobrazovaných jmen adres a názvů příloh, včetně dříve uložených zpráv při čtení;
 - celý detail zprávy a metadata příloh;
 - sandboxovaný náhled HTML zprávy s blokovanými skripty, formuláři, navigací a vzdálenými zdroji.

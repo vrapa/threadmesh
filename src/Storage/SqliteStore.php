@@ -258,7 +258,7 @@ SQL);
         }
 
         $sql = <<<'SQL'
-SELECT i.id, i.account_id, i.title, i.status, i.author_json, i.source_created_at,
+SELECT i.id, i.account_id, i.title, i.status, i.author_json, i.recipients_json, i.source_created_at,
        a.importance, a.category, a.summary, a.requires_action, a.due_at,
        a.amount, a.currency, a.recommended_action, a.reason, a.assessed_at,
        CASE WHEN a.email_id IS NULL THEN 0 ELSE 1 END AS assessed
@@ -273,6 +273,9 @@ SQL;
             $author = $row['author_json'] ?? null;
             $row['author'] = is_string($author) ? json_decode($author, true) : null;
             unset($row['author_json']);
+            $recipients = $row['recipients_json'] ?? null;
+            $row['recipients'] = is_string($recipients) ? json_decode($recipients, true) : [];
+            unset($row['recipients_json']);
             $row['assessed'] = (bool) ($row['assessed'] ?? false);
             if ($row['requires_action'] !== null) {
                 $row['requires_action'] = (bool) $row['requires_action'];

@@ -13,6 +13,14 @@
         <dl class="row mb-0">
             <dt class="col-sm-2">Od</dt>
             <dd class="col-sm-10">{$email['author']['displayName'] ?? $email['author']['address'] ?? 'Neznámý odesílatel'}{ifset $email['author']['address']} &lt;{$email['author']['address']}&gt;{/ifset}</dd>
+            <dt class="col-sm-2">Komu</dt>
+            <dd class="col-sm-10">
+                {if $email['recipients'] ?? []}
+                    {foreach $email['recipients'] as $recipient}{sep}, {/sep}{$recipient['address'] ?? $recipient['displayName'] ?? 'Neznámý adresát'}{/foreach}
+                {else}
+                    Neuvedeno
+                {/if}
+            </dd>
             <dt class="col-sm-2">Datum</dt>
             <dd class="col-sm-10">{$email['source_created_at']|date:'j. n. Y H:i'}</dd>
             {if $email['summary']}<dt class="col-sm-2">Shrnutí</dt><dd class="col-sm-10">{$email['summary']}</dd>{/if}

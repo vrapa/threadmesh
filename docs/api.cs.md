@@ -37,7 +37,7 @@ Content-Type: application/json
 
 ## Přehled schránky
 
-`GET /v1/mailbox` vrací stručná metadata pro seznam, nikoli celé tělo zprávy. Bez parametru `since` zobrazí posledních sedm dní. Výsledek obsahuje odesílatele, předmět, čas, stav hodnocení, důležitost, kategorii, shrnutí a doporučenou akci.
+`GET /v1/mailbox` vrací stručná metadata pro seznam, nikoli celé tělo zprávy. Bez parametru `since` zobrazí posledních sedm dní. Výsledek obsahuje odesílatele a adresáty, předmět, čas, stav hodnocení, důležitost, kategorii, shrnutí a doporučenou akci.
 
 Podporované parametry:
 

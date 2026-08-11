@@ -121,7 +121,7 @@ For example:
 GET /v1/mailbox?since=2026-07-24T00:00:00Z&importance=high,critical&limit=100
 ```
 
-The overview contains sender metadata, subject, source timestamp, assessment status, importance, category, summary, and recommended action. Fetch `GET /v1/emails/{id}` only when the full stored body is needed.
+The overview contains sender and recipient metadata, subject, source timestamp, assessment status, importance, category, summary, and recommended action. Fetch `GET /v1/emails/{id}` only when the full stored body is needed.
 
 ## Store an assessment
 

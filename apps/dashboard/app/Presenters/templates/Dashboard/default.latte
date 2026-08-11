@@ -65,6 +65,14 @@
                     <div class="mail-meta text-body-secondary">
                         <strong class="text-body">{$email['author']['displayName'] ?? $email['author']['address'] ?? 'Neznámý odesílatel'}</strong>
                         {ifset $email['author']['address']}<span class="ms-1">&lt;{$email['author']['address']}&gt;</span>{/ifset}
+                        <div class="mt-1">
+                            <span class="fw-semibold">Komu:</span>
+                            {if $email['recipients'] ?? []}
+                                {foreach $email['recipients'] as $recipient}{sep}, {/sep}{$recipient['address'] ?? $recipient['displayName'] ?? 'Neznámý adresát'}{/foreach}
+                            {else}
+                                Neuvedeno
+                            {/if}
+                        </div>
                     </div>
                     <time class="mail-meta text-body-secondary">{$email['source_created_at']|date:'j. n. Y H:i'}</time>
                 </div>

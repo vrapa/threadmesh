@@ -84,6 +84,9 @@ final class MailboxQueryTest extends TestCase
         self::assertTrue($emails[0]['requires_action']);
         self::assertIsArray($emails[0]['author']);
         self::assertSame('sender@example.test', $emails[0]['author']['address']);
+        self::assertIsArray($emails[0]['recipients']);
+        self::assertIsArray($emails[0]['recipients'][0]);
+        self::assertSame('recipient@example.test', $emails[0]['recipients'][0]['address']);
         self::assertArrayNotHasKey('text_body', $emails[0]);
         self::assertArrayNotHasKey('html_body', $emails[0]);
     }
@@ -116,6 +119,7 @@ final class MailboxQueryTest extends TestCase
             new Actor('sender@example.test', 'Sender', 'sender@example.test'),
             ItemStatus::New,
             new DateTimeImmutable($date),
+            recipients: [new Actor('recipient@example.test', 'Recipient', 'recipient@example.test')],
         );
     }
 }
