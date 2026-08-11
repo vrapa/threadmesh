@@ -9,6 +9,12 @@ RUN apt-get update \
         ca-certificates \
         libzip-dev \
         unzip \
+    && certificate_fingerprint="$(openssl x509 \
+        -in /usr/share/ca-certificates/mozilla/SSL.com_TLS_RSA_Root_CA_2022.crt \
+        -outform DER \
+        | sha256sum \
+        | cut -d ' ' -f 1)" \
+    && test "$certificate_fingerprint" = "8faf7d2e2cb4709bb8e0b33666bf75a5dd45b5de480f8ea8d4bfe6bebc17f2ed" \
     && docker-php-ext-install -j"$(nproc)" zip \
     && rm -rf /var/lib/apt/lists/*
 
