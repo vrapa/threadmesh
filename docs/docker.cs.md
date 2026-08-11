@@ -81,6 +81,16 @@ MCP uvnitř izolovaného kontejneru poslouchá na `0.0.0.0`, aby jej Docker mohl
 
 Vestavěný PHP server je vhodný pro lokální použití, nikoli pro přímý veřejný produkční provoz.
 
+### Důvěryhodné CA v kontejneru
+
+Aktuální bezpečnostní aktualizace Debianu Bookworm poskytují kořen `SSL.com TLS RSA Root CA 2022` přes podporovaný balíček `ca-certificates`. Jde o veřejný kořen popsaný v [oficiálním SSL.com CA repository](https://www.ssl.com/repository/). Docker build tento distribuovaný kořen vyžaduje a před dokončením ověří jeho SHA-256 fingerprint, aniž by vypínal ověřování protistrany nebo hostname:
+
+```text
+8FAF7D2E2CB4709BB8E0B33666BF75A5DD45B5DE480F8EA8D4BFE6BEBC17F2ED
+```
+
+Při údržbě image nadále instalujte `ca-certificates` z podporovaného Debian repository. Pokud Debian tento kořen záměrně nahradí, před změnou připnuté cesty nebo fingerprintu v `Dockerfile` ověřte náhradu a její stav důvěry vůči Debian balíčku a oficiálnímu SSL.com repository. Nikdy nepoužívejte serverový, mezilehlý, soukromý ani neověřený certifikát.
+
 ## Zastavení, aktualizace a odstranění
 
 Kontejnery zastavíte bez odstranění dat:

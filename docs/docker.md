@@ -81,6 +81,16 @@ The MCP process listens on `0.0.0.0` inside its isolated container so Docker can
 
 The built-in PHP server is suitable for local use, not for direct public production hosting.
 
+### Container CA trust store
+
+Current Debian Bookworm security updates provide the `SSL.com TLS RSA Root CA 2022` root through the supported `ca-certificates` package. It is the public root documented in the [official SSL.com CA repository](https://www.ssl.com/repository/). The Docker build requires that distributed root and verifies its SHA-256 fingerprint before completing, without disabling peer or hostname verification:
+
+```text
+8FAF7D2E2CB4709BB8E0B33666BF75A5DD45B5DE480F8EA8D4BFE6BEBC17F2ED
+```
+
+When maintaining the image, keep installing `ca-certificates` from a supported Debian repository. If Debian intentionally replaces this root, verify the replacement and its trust status against the Debian package and the official SSL.com repository before updating the pinned path or fingerprint in `Dockerfile`. Never substitute a server, intermediate, private, or unverified certificate.
+
 ## Stop, update, and delete
 
 Stop containers while retaining SQLite data:
