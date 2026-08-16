@@ -21,6 +21,7 @@ use Webklex\PHPIMAP\Exceptions\AuthFailedException;
 use Webklex\PHPIMAP\Exceptions\ConnectionFailedException;
 use Webklex\PHPIMAP\Folder;
 use Webklex\PHPIMAP\Message;
+use Webklex\PHPIMAP\Query\WhereQuery;
 
 final class WebklexImapGateway implements ImapGateway
 {
@@ -100,9 +101,7 @@ final class WebklexImapGateway implements ImapGateway
     public function messagesAfter(string $folderId, int $lastUid, int $limit): array
     {
         try {
-            $query = $this->requireFolder($folderId)
-                ->messages()
-                ->whereUid(($lastUid + 1) . ':*')
+            $query = $this->queryAfterUid($this->requireFolder($folderId)->messages(), $lastUid)
                 ->limit($limit)
                 ->leaveUnread()
                 ->setFetchFlags(false)
@@ -129,9 +128,7 @@ final class WebklexImapGateway implements ImapGateway
     public function messagesSinceAfter(string $folderId, DateTimeImmutable $since, int $lastUid, int $limit): array
     {
         try {
-            $query = $this->requireFolder($folderId)
-                ->messages()
-                ->whereUid(($lastUid + 1) . ':*')
+            $query = $this->queryAfterUid($this->requireFolder($folderId)->messages(), $lastUid)
                 ->since($since->format('d.m.Y'))
                 ->limit($limit)
                 ->leaveUnread()
@@ -186,6 +183,11 @@ final class WebklexImapGateway implements ImapGateway
             throw new TemporarySourceException(sprintf('IMAP folder "%s" is unavailable.', $folderId));
         }
         return $folder;
+    }
+
+    private function queryAfterUid(WhereQuery $query, int $lastUid): WhereQuery
+    {
+        return $query->where(sprintf('CUSTOM UID %d:*', $lastUid + 1));
     }
 
     private function folderStatus(Folder $folder): FolderStatus

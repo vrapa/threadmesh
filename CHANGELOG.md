@@ -21,3 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened local Docker image and Compose deployment with shared persistent SQLite storage.
 - English and Czech Docker setup, update, security, and backup instructions.
 - Public alpha presentation with architecture diagram, usage scenario, limitations, commercial support, expanded security policy, and Docker CI.
+
+### Fixed
+
+- Generate incremental and historical IMAP UID ranges without quotes for Gmail compatibility.
