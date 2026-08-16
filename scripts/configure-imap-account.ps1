@@ -1,12 +1,18 @@
 [CmdletBinding()]
 param(
     [string] $ApiUrl = 'http://127.0.0.1:8080',
-    [string] $EnvFile = (Join-Path (Split-Path -Parent $PSScriptRoot) '.env')
+    [string] $EnvFile = '',
+    [switch] $Gmail
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+
+if ([string]::IsNullOrWhiteSpace($EnvFile)) {
+    $scriptDirectory = Split-Path -Parent $PSCommandPath
+    $EnvFile = Join-Path (Split-Path -Parent $scriptDirectory) '.env'
+}
 
 function Read-RequiredValue {
     param([string] $Prompt, [string] $Default = '')
@@ -154,20 +160,39 @@ $accountPayload = $null
 try {
     Write-Host 'ThreadMesh IMAP account setup'
     Write-Host 'The password is read locally with hidden input and is sent only to the configured ThreadMesh API.'
+    if ($Gmail) {
+        Write-Host 'Gmail preset: imap.gmail.com:993 over SSL; only INBOX will be initialized.'
+        Write-Host 'Use a Google app password, not the main Google Account password.'
+    }
     Write-Host ''
-    $accountId = Read-RequiredValue -Prompt 'Account ID (letters, numbers, dot, underscore, or hyphen)'
+    $accountIdDefault = if ($Gmail) { 'gmail' } else { '' }
+    $accountId = Read-RequiredValue `
+        -Prompt 'Account ID (letters, numbers, dot, underscore, or hyphen)' `
+        -Default $accountIdDefault
     if ($accountId -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
         throw 'Account ID must start with a letter or number and contain only letters, numbers, dot, underscore, or hyphen.'
     }
-    $displayName = Read-RequiredValue -Prompt 'Display name' -Default $accountId
-    $hostName = Read-RequiredValue -Prompt 'IMAP server'
-    $port = Read-Port
-    $encryption = Read-Encryption
-    $validateCertificate = Read-YesNo -Prompt 'Validate the TLS certificate' -Default $true
-    $username = Read-RequiredValue -Prompt 'IMAP username'
+    $displayNameDefault = if ($Gmail) { 'Gmail' } else { $accountId }
+    $displayName = Read-RequiredValue -Prompt 'Display name' -Default $displayNameDefault
+    if ($Gmail) {
+        $hostName = 'imap.gmail.com'
+        $port = 993
+        $encryption = 'ssl'
+        $validateCertificate = $true
+        $username = Read-RequiredValue -Prompt 'Gmail address'
+    }
+    else {
+        $hostName = Read-RequiredValue -Prompt 'IMAP server'
+        $port = Read-Port
+        $encryption = Read-Encryption
+        $validateCertificate = Read-YesNo -Prompt 'Validate the TLS certificate' -Default $true
+        $username = Read-RequiredValue -Prompt 'IMAP username'
+    }
+    $secretPrompt = if ($Gmail) { 'Google app password (input is hidden)' } else { 'IMAP password or app password (input is hidden)' }
+    $secretName = if ($Gmail) { 'Google app password' } else { 'IMAP password' }
     $plainPassword = ConvertFrom-HiddenInput `
-        -SecureValue (Read-Host 'IMAP password or app password (input is hidden)' -AsSecureString) `
-        -Name 'IMAP password'
+        -SecureValue (Read-Host $secretPrompt -AsSecureString) `
+        -Name $secretName
 
     $configuration = @{
         host = $hostName
@@ -203,7 +228,7 @@ try {
     $draftDefault = 0
     $inboxDefault = 0
     for ($index = 0; $index -lt $folders.Count; $index++) {
-        if ($folders[$index].id -ieq 'Drafts' -or $folders[$index].displayName -ieq 'Drafts') { $draftDefault = $index + 1 }
+        if ($folders[$index].id -match '(^|[/\\])Drafts$' -or $folders[$index].displayName -match '(^|[/\\])Drafts$') { $draftDefault = $index + 1 }
         if ($folders[$index].id -ieq 'INBOX') { $inboxDefault = $index + 1 }
     }
     $draftIndex = Read-FolderIndex -Prompt 'Folder used for reply drafts' -Folders $folders -DefaultIndex $draftDefault
@@ -212,8 +237,14 @@ try {
         id = $accountId; displayName = $displayName; enabled = $true; configuration = $configuration
     }
 
-    $syncIndexes = Read-SyncFolderIndexes -Folders $folders -DefaultIndex $inboxDefault
-    $streamIds = @($syncIndexes | ForEach-Object { [string] $folders[$_].id })
+    if ($Gmail) {
+        if ($inboxDefault -eq 0) { throw 'Gmail did not return the required INBOX folder.' }
+        $streamIds = @([string] $folders[$inboxDefault - 1].id)
+    }
+    else {
+        $syncIndexes = Read-SyncFolderIndexes -Folders $folders -DefaultIndex $inboxDefault
+        $streamIds = @($syncIndexes | ForEach-Object { [string] $folders[$_].id })
+    }
     Write-Host ''
     Write-Warning 'Initialization starts at each folder current highest UID. Existing messages will not be imported.'
     Write-Host ('Selected folders: ' + ($streamIds -join ', '))

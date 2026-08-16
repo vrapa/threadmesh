@@ -76,6 +76,8 @@ Ve Windows použijte interaktivního průvodce, který nakonfiguruje a otestuje 
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1
 ```
 
+Pro Gmail účet s Google app password přidejte přepínač `-Gmail`; předvolba použije SSL připojení k `imap.gmail.com:993` a po výslovném potvrzení inicializuje pouze `INBOX`.
+
 Průvodce načte složky ze serveru, nastaví složku konceptů a vybrané synchronizační složky inicializuje až po výslovném potvrzení. Podrobnosti jsou v [českém návodu k nastavení IMAP účtu](docs/account-setup.cs.md).
 
 Pro programové nastavení použijte `POST /v1/accounts`:

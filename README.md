@@ -76,6 +76,8 @@ On Windows, use the interactive helper to configure and test an account without 
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1
 ```
 
+For a Gmail account using a Google app password, add `-Gmail`; the preset uses `imap.gmail.com:993` with SSL and initializes only `INBOX` after explicit confirmation.
+
 The helper discovers the server's folders, configures the reply-draft folder, and initializes selected synchronization folders only after explicit confirmation. See the [Windows IMAP account setup guide](docs/account-setup.md).
 
 For programmatic setup, send `POST /v1/accounts` with a bearer token:

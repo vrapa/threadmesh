@@ -12,6 +12,14 @@ Z kořene repozitáře spusťte:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1
 ```
 
+Pro Gmail použijte předvolbu, která nastaví SSL připojení k `imap.gmail.com:993` a inicializuje pouze `INBOX`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1 -Gmail
+```
+
+Gmail předvolba si skrytým vstupem vyžádá celou Gmail adresu a Google app password. Nezadávejte hlavní heslo Google účtu. Vytvoření app password vyžaduje dvoufázové ověření a nemusí být dostupné, pokud ho správce Google Workspace zakázal. ThreadMesh zatím Google OAuth nepodporuje.
+
 Průvodce používá `http://127.0.0.1:8080` a načte token z aktuálního prostředí nebo z lokálního `.env`. Vlastní umístění lze zadat parametry:
 
 ```powershell
@@ -28,6 +36,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-acc
 4. Načte složky a nechá vybrat přesnou serverovou složku pro koncepty odpovědí.
 5. Nechá vybrat jednu nebo více složek pro inkrementální synchronizaci.
 6. Vybrané složky inicializuje až po zadání textu `INITIALIZE`.
+
+S přepínačem `-Gmail` jsou server, port, zabezpečení a ověřování certifikátu pevně nastavené podle Gmailu. Krok 5 se přeskočí a vybere se pouze `INBOX`. Načtení složek i výslovné potvrzení inicializace zůstávají zachované. Složka pro koncepty se stále vybírá explicitně, protože její Gmail IMAP cesta může být lokalizovaná.
 
 Inicializace začne na aktuálním nejvyšším UID každé vybrané složky. Starší zprávy se neimportují; synchronizují se až zprávy doručené po inicializaci. Nejbezpečnější výchozí volbou je pouze `INBOX`. Odeslanou poštu, koš, spam a archivní složky nevybírejte, pokud je ThreadMesh nemá záměrně zpracovávat.
 

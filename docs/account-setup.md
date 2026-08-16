@@ -12,6 +12,14 @@ From the repository root, run:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1
 ```
 
+For Gmail, use the preset that fixes the connection to `imap.gmail.com:993` with SSL and initializes only `INBOX`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-account.ps1 -Gmail
+```
+
+The Gmail preset asks for the full Gmail address and a Google app password with hidden input. Do not enter the main Google Account password. Creating an app password requires 2-Step Verification and may be unavailable when a Google Workspace administrator disallows it. ThreadMesh does not support Google OAuth yet.
+
 The helper defaults to `http://127.0.0.1:8080` and reads the token from the current environment or the repository `.env`. Override either location when needed:
 
 ```powershell
@@ -28,6 +36,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-imap-acc
 4. Discovers folders and lets you select the exact server folder used for reply drafts.
 5. Lets you select one or more folders for incremental synchronization.
 6. Initializes the selected folders only after you type `INITIALIZE`.
+
+With `-Gmail`, the server, port, encryption, and certificate validation are fixed to the Gmail settings, and step 5 is skipped because only `INBOX` is selected. Folder discovery and the explicit initialization confirmation are still performed. The reply-draft folder remains an explicit choice because its Gmail IMAP path can be localized.
 
 Initialization starts at each selected folder's current highest UID. Existing messages are not imported; only messages arriving after initialization are synchronized. Selecting only `INBOX` is the safest default. Do not select Sent, Trash, Junk, Spam, or archive folders unless you intentionally want ThreadMesh to process them.
 
