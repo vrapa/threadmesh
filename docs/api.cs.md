@@ -30,6 +30,7 @@ Content-Type: application/json
 | `GET` | `/v1/mailbox` | Časově filtrovaný přehled e-mailů a hodnocení |
 | `GET` | `/v1/emails?limit=20` | E-maily bez uloženého hodnocení |
 | `GET` | `/v1/emails/{id}` | Detail e-mailu a hodnocení |
+| `POST` | `/v1/emails/{id}/trash` | Přesun jedné zprávy do IMAP koše; vrací `{ "trashed": true }` |
 | `POST` | `/v1/emails/{id}/assessment` | Uložení nebo nahrazení hodnocení |
 | `POST` | `/v1/emails/{id}/drafts` | Vytvoření lokálního konceptu odpovědi |
 | `GET` | `/v1/alerts?limit=50` | Důležitá, akční a fakturační upozornění |
@@ -55,6 +56,8 @@ GET /v1/mailbox?since=2026-07-24T00:00:00Z&importance=high,critical&limit=100
 ```
 
 Pro načtení celého těla použijte následně `GET /v1/emails/{id}`.
+
+Přesun do koše vyžaduje u účtu nastavené `trashFolder` nebo právě jednu dostupnou složku s příznakem `\Trash`. Server musí podporovat `UID MOVE`; nepoužívá se náhradní postup s vyprázdněním složky. Úspěšně přesunuté zprávy zmizí z přehledu a upozornění. Při nejistém výsledku aplikace před opakováním kontroluje zdrojovou zprávu.
 
 ## Inicializace a historický import
 

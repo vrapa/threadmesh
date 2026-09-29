@@ -8,15 +8,18 @@ use ThreadMesh\Application\BackfillStream;
 use ThreadMesh\Application\InitializeAccount;
 use ThreadMesh\Application\SynchronizeStream;
 use ThreadMesh\Mail\ThreadMeshService;
+use ThreadMesh\Mail\TrashEmail;
 use ThreadMesh\Storage\SecretCipher;
 use ThreadMesh\Storage\SqliteConnection;
 use ThreadMesh\Storage\SqliteConnectorProvider;
 use ThreadMesh\Storage\SqliteStore;
 use ThreadMesh\Imap\ImapDraftWriter;
+use ThreadMesh\Imap\ImapTrashMover;
+use ThreadMesh\Imap\TrashMover;
 
 final class Bootstrap
 {
-    public static function create(?string $databasePath = null): ThreadMeshService
+    public static function create(?string $databasePath = null, ?TrashMover $trashMover = null): ThreadMeshService
     {
         $path = $databasePath ?? self::databasePath();
         $store = new SqliteStore(new SqliteConnection($path), SecretCipher::fromEnvironment());
@@ -30,6 +33,7 @@ final class Bootstrap
             $connectors,
             new ImapDraftWriter(),
             new BackfillStream($store, $connectors, $store, $store, $store),
+            new TrashEmail($store, $connectors, $trashMover ?? new ImapTrashMover()),
         );
     }
 

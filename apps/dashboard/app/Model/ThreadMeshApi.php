@@ -48,13 +48,31 @@ final class ThreadMeshApi
         return $email;
     }
 
+    public function trashEmail(string $id): void
+    {
+        if (preg_match('/^[a-f0-9]+$/D', $id) !== 1) {
+            throw new RuntimeException('Invalid email ID.');
+        }
+        $response = $this->request('POST', '/v1/emails/' . $id . '/trash');
+        if (($response['trashed'] ?? null) !== true) {
+            throw new RuntimeException('ThreadMesh did not confirm the IMAP move.');
+        }
+    }
+
     /** @return array<string, mixed> */
     private function get(string $path): array
     {
+        return $this->request('GET', $path);
+    }
+
+    /** @return array<string, mixed> */
+    private function request(string $method, string $path): array
+    {
         $context = stream_context_create([
             'http' => [
-                'method' => 'GET',
-                'header' => "Accept: application/json\r\nAuthorization: Bearer {$this->token}\r\n",
+                'method' => $method,
+                'header' => "Accept: application/json\r\nContent-Type: application/json\r\nAuthorization: Bearer {$this->token}\r\n",
+                'content' => $method === 'POST' ? '{}' : '',
                 'ignore_errors' => true,
                 'timeout' => 10,
             ],

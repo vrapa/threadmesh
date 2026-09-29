@@ -12,6 +12,7 @@ final class RouterFactory
     public static function createRouter(): RouteList
     {
         $router = new RouteList();
+        $router->addRoute('dashboard/email/<id [a-f0-9]+>/trash', 'Dashboard:trash');
         $router->addRoute('dashboard/email/<id [a-f0-9]+>/content', 'Dashboard:content');
         $router->addRoute('dashboard/email/<id [a-f0-9]+>', 'Dashboard:detail');
         $router->addRoute('dashboard[/]', 'Dashboard:default');

@@ -53,12 +53,41 @@ final class DashboardPresenter extends Presenter
         $this->template->assessed = $assessed;
         $this->template->requiresAction = $requiresAction;
         $this->template->emails = [];
+        $section = $this->getSession('trash');
+        $token = $section->get('csrf');
+        if (!is_string($token)) {
+            $token = bin2hex(random_bytes(32));
+            $section->set('csrf', $token);
+        }
+        $this->template->csrfToken = $token;
         $this->template->error = null;
         try {
             $this->template->emails = array_map($this->decorate(...), $this->api->mailbox($filters));
         } catch (RuntimeException $error) {
             $this->template->error = $error->getMessage();
         }
+    }
+
+    public function actionTrash(string $id, int $days = 7, ?string $importance = null, ?string $assessed = null, ?string $requiresAction = null): void
+    {
+        $submitted = $this->getHttpRequest()->getPost('csrf');
+        $expected = $this->getSession('trash')->get('csrf');
+        if ($this->getHttpRequest()->getMethod() !== 'POST'
+            || !is_string($submitted) || !is_string($expected) || !hash_equals($expected, $submitted)) {
+            $this->error('Invalid request token.', 403);
+        }
+        try {
+            $this->api->trashEmail($id);
+            $this->flashMessage('Zpráva byla přesunuta do koše.', 'success');
+        } catch (RuntimeException $error) {
+            $this->flashMessage('Zprávu se nepodařilo přesunout do koše: ' . $error->getMessage(), 'danger');
+        }
+        $this->redirect('Dashboard:default', [
+            'days' => $days,
+            'importance' => $importance,
+            'assessed' => $assessed,
+            'requiresAction' => $requiresAction,
+        ]);
     }
 
     public function actionDetail(string $id): void

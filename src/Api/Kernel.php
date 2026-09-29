@@ -135,6 +135,10 @@ final class Kernel
         if ($method === 'GET' && preg_match('#^/v1/emails/([a-f0-9]+)$#', $path, $matches) === 1) {
             return $this->json(['email' => $this->service->email($matches[1])]);
         }
+        if ($method === 'POST' && preg_match('#^/v1/emails/([a-f0-9]+)/trash$#', $path, $matches) === 1) {
+            $this->service->trashEmail($matches[1]);
+            return $this->json(['trashed' => true]);
+        }
         if ($method === 'POST' && preg_match('#^/v1/emails/([a-f0-9]+)/assessment$#', $path, $matches) === 1) {
             $data = $this->body($request);
             $this->service->assess(

@@ -1,6 +1,6 @@
 {
   "name": "threadmesh/dashboard",
-  "description": "Read-only Nette and Bootstrap dashboard for ThreadMesh mail.",
+  "description": "Nette and Bootstrap dashboard for ThreadMesh mail.",
   "type": "project",
   "license": "MIT",
   "require": {

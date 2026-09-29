@@ -15,7 +15,7 @@ ThreadMesh je self-hosted PHP nástroj pro čtení nových IMAP e-mailů a jejic
 - HTTP JSON API chráněné Bearer tokenem.
 - Výslovný stránkovaný import nedávné historie bez posunu živého synchronizačního kurzoru.
 - Lokální streamable HTTP MCP server pro Codex a další MCP klienty.
-- Volitelné Nette a Bootstrap UI pro čtení schránky, filtrování priorit a bezpečný náhled zpráv.
+- Volitelné Nette a Bootstrap UI pro čtení schránky, filtrování priorit, bezpečný náhled a přesun zpráv do IMAP koše jedním kliknutím.
 - Hodnocení e-mailů, upozornění, údaje o fakturách a lokální koncepty.
 - Volitelné uložení potvrzeného konceptu do IMAP Drafts. ThreadMesh neumí e-mail odeslat.
 
@@ -94,7 +94,8 @@ Pro programové nastavení použijte `POST /v1/accounts`:
     "encryption": "ssl",
     "validateCertificate": true,
     "username": "me@example.com",
-    "draftFolder": "Drafts"
+    "draftFolder": "Drafts",
+    "trashFolder": "Trash"
   }
 }
 ```
@@ -102,6 +103,8 @@ Pro programové nastavení použijte `POST /v1/accounts`:
 Následně otestujte `/v1/accounts/work/test`, načtěte seznam složek z `/v1/accounts/work/folders` a vybrané složky inicializujte přes `/v1/accounts/work/initialize`. Inicializace začne na aktuálním nejvyšším UID, takže se neimportuje starší historie.
 
 Na nové instalaci lze poslední zprávy výslovně načíst přes `/v1/accounts/work/backfill`. Stručný přehled e-mailů a jejich hodnocení za posledních sedm dní poskytuje `/v1/mailbox`; podrobnosti jsou v [českém popisu HTTP API](docs/api.cs.md).
+
+`trashFolder` není nutné zadat, pokud IMAP server označuje právě jednu dostupnou složku příznakem `\Trash`. Tlačítko Smazat v přehledu přesune zprávu do tohoto koše ihned po kliknutí. Server musí podporovat `UID MOVE`; nejistý nebo nebezpečný přesun skončí chybou.
 
 ## MCP a automatizace
 

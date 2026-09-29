@@ -1,6 +1,6 @@
 # ThreadMesh Dashboard
 
-Read-only Nette and Bootstrap UI for the ThreadMesh mailbox API. It is distributed under the repository's MIT license.
+Nette and Bootstrap UI for the ThreadMesh mailbox API. It is distributed under the repository's MIT license. Each message has a **Delete** button that moves it to the account's IMAP Trash in one click. Failed moves leave the message in the list with an error notice.
 
 The dashboard keeps `THREADMESH_API_TOKEN` on the server and never exposes it to the browser. Email HTML is rendered in a sandboxed iframe with scripts, forms, navigation, and remote resources blocked.
 

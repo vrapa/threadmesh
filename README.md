@@ -15,7 +15,7 @@ ThreadMesh is a self-hosted, API-first PHP toolkit for reading new IMAP email an
 - Bearer-protected HTTP JSON API for configuration and application access.
 - Explicit, paged import of recent history without moving the live synchronization cursor.
 - Local streamable HTTP MCP server with seven tools for ChatGPT/Codex automation.
-- Optional read-only Nette and Bootstrap dashboard with priority filters and a sandboxed message preview.
+- Optional Nette and Bootstrap dashboard with priority filters, a sandboxed message preview, and one-click move to IMAP Trash.
 - Local assessments, alerts, invoice metadata, and reply drafts.
 - Optional, explicitly confirmed append to a configured IMAP Drafts folder. ThreadMesh cannot send email.
 
@@ -94,7 +94,8 @@ For programmatic setup, send `POST /v1/accounts` with a bearer token:
     "encryption": "ssl",
     "validateCertificate": true,
     "username": "me@example.com",
-    "draftFolder": "Drafts"
+    "draftFolder": "Drafts",
+    "trashFolder": "Trash"
   }
 }
 ```
@@ -102,6 +103,8 @@ For programmatic setup, send `POST /v1/accounts` with a bearer token:
 Then test `/v1/accounts/work/test`, inspect `/v1/accounts/work/folders`, and initialize selected folders through `/v1/accounts/work/initialize`. Initialization starts at the current highest UID, so existing history is not imported.
 
 A new installation may explicitly import recent history through `/v1/accounts/work/backfill`. Applications can read a compact, assessment-aware seven-day overview from `/v1/mailbox`; see the [HTTP API guide](docs/api.md).
+
+`trashFolder` is optional if the IMAP server marks exactly one selectable folder with `\Trash`. The dashboard's Delete button immediately moves one message to that folder. The server must support `UID MOVE`; an uncertain or unsafe move is reported as an error.
 
 ## MCP and AI automation
 

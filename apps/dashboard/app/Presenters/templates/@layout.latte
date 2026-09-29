@@ -16,6 +16,7 @@
         .mail-meta { font-size: .875rem; }
         .summary { max-width: 68rem; }
         .message-frame { min-height: 32rem; background: white; }
+        .mail-card .mail-link { min-width: 0; }
     </style>
 </head>
 <body>
@@ -26,7 +27,11 @@
     </div>
 </nav>
 <main class="container py-4 py-lg-5">
+    {foreach $flashes as $flash}
+        <div class="alert alert-{$flash->type}" role="status">{$flash->message}</div>
+    {/foreach}
     {include content}
 </main>
+<script src="/dashboard/js/trash.js" defer></script>
 </body>
 </html>

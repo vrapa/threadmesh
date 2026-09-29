@@ -28,6 +28,7 @@ final class ThreadMeshService
         private readonly SqliteConnectorProvider $imapConnections,
         private readonly ImapDraftWriter $draftWriter,
         private readonly BackfillStream $backfiller,
+        private readonly TrashEmail $trashEmail,
         ?MailHeaderNormalizer $headers = null,
     ) {
         $this->headers = $headers ?? new MailHeaderNormalizer();
@@ -171,6 +172,11 @@ final class ThreadMeshService
     {
         $email = $this->store->email($id) ?? throw new RuntimeException('Email was not found.');
         return $this->headers->email($email);
+    }
+
+    public function trashEmail(string $id): void
+    {
+        $this->trashEmail->execute($id);
     }
 
     public function assess(
