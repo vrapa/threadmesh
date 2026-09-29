@@ -113,6 +113,13 @@ CREATE TABLE IF NOT EXISTS drafts (
     updated_at TEXT NOT NULL,
     FOREIGN KEY (email_id) REFERENCES items(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS trash_operations (
+    email_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'uncertain', 'done')),
+    trash_folder TEXT,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (email_id) REFERENCES items(id) ON DELETE CASCADE
+);
 SQL);
     }
 }

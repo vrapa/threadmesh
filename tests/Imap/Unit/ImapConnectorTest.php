@@ -52,6 +52,7 @@ final class ImapConnectorTest extends TestCase
         self::assertSame('sender@example.com', $result->items[0]->author->address);
         self::assertSame('Body', $result->items[0]->content->text);
         self::assertSame('report.pdf', $result->items[0]->attachments[0]->name);
+        self::assertSame(987, $result->items[0]->metadata['uidValidity']);
         self::assertSame(42, (new ImapCursorCodec())->decode($result->nextCursor)->lastUid);
         self::assertSame([40, 3], $gateway->requestedAfter);
     }

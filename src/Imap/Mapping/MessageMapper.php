@@ -17,7 +17,7 @@ use ThreadMesh\Imap\Client\MessageData;
 
 final class MessageMapper
 {
-    public function map(string $accountId, string $folderId, MessageData $message): Item
+    public function map(string $accountId, string $folderId, MessageData $message, ?int $uidValidity = null): Item
     {
         $author = $message->from[0] ?? new EmailAddress('unknown', 'Unknown sender');
         $externalId = $folderId . ':' . $message->uid;
@@ -47,7 +47,7 @@ final class MessageMapper
                 ),
                 $message->attachments,
             ),
-            metadata: ['folder' => $folderId, 'uid' => $message->uid, ...$message->headers],
+            metadata: ['folder' => $folderId, 'uid' => $message->uid, 'uidValidity' => $uidValidity, ...$message->headers],
         );
     }
 

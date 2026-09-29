@@ -209,7 +209,7 @@ SQL);
     {
         $emails = [];
         foreach ($this->fetchAll(
-            'SELECT i.* FROM items i LEFT JOIN assessments a ON a.email_id = i.id WHERE i.type = :type AND a.email_id IS NULL ORDER BY i.source_created_at ASC LIMIT :limit',
+            'SELECT i.* FROM items i JOIN accounts account ON account.id = i.account_id LEFT JOIN assessments a ON a.email_id = i.id WHERE i.type = :type AND a.email_id IS NULL AND ' . $this->activeEmailSql() . ' ORDER BY i.source_created_at ASC LIMIT :limit',
             ['type' => 'email', 'limit' => $limit],
         ) as $row) {
             $emails[] = $this->hydrateEmail($row);
@@ -230,7 +230,7 @@ SQL);
         ?bool $requiresAction = null,
         int $limit = 100,
     ): array {
-        $where = ['i.type = :type', 'julianday(i.source_created_at) >= julianday(:since)'];
+        $where = ['i.type = :type', 'julianday(i.source_created_at) >= julianday(:since)', $this->activeEmailSql()];
         $parameters = ['type' => 'email', 'since' => $since->format(DATE_ATOM), 'limit' => $limit];
         if ($until !== null) {
             $where[] = 'julianday(i.source_created_at) < julianday(:until)';
@@ -263,6 +263,7 @@ SELECT i.id, i.account_id, i.title, i.status, i.author_json, i.recipients_json, 
        a.amount, a.currency, a.recommended_action, a.reason, a.assessed_at,
        CASE WHEN a.email_id IS NULL THEN 0 ELSE 1 END AS assessed
 FROM items i
+JOIN accounts account ON account.id = i.account_id
 LEFT JOIN assessments a ON a.email_id = i.id
 SQL;
         $rows = $this->fetchAll(
@@ -293,6 +294,28 @@ SQL;
             ['id' => $id],
         );
         return $row !== null ? $this->hydrateEmail($row) : null;
+    }
+
+    /** @return array{status:string, updated_at:string}|null */
+    public function trashOperation(string $emailId): ?array
+    {
+        $row = $this->fetchOne('SELECT status, updated_at FROM trash_operations WHERE email_id = :email_id', ['email_id' => $emailId]);
+        if (!is_string($row['status'] ?? null) || !is_string($row['updated_at'] ?? null)) {
+            return null;
+        }
+        return ['status' => $row['status'], 'updated_at' => $row['updated_at']];
+    }
+
+    public function setTrashStatus(string $emailId, string $status, ?string $trashFolder = null): void
+    {
+        if (!in_array($status, ['pending', 'uncertain', 'done'], true)) {
+            throw new RuntimeException('Invalid trash operation status.');
+        }
+        $statement = $this->pdo->prepare(<<<'SQL'
+INSERT INTO trash_operations (email_id, status, trash_folder, updated_at) VALUES (:email_id, :status, :trash_folder, :updated_at)
+ON CONFLICT(email_id) DO UPDATE SET status = excluded.status, trash_folder = excluded.trash_folder, updated_at = excluded.updated_at
+SQL);
+        $statement->execute(['email_id' => $emailId, 'status' => $status, 'trash_folder' => $trashFolder, 'updated_at' => gmdate(DATE_ATOM)]);
     }
 
     public function storeAssessment(
@@ -343,16 +366,34 @@ SQL);
     /** @return list<array<string, mixed>> */
     public function alerts(int $limit = 50): array
     {
-        return $this->fetchAll(<<<'SQL'
+        $sql = <<<'SQL'
 SELECT i.id AS email_id, i.title, i.author_json, i.source_created_at,
        a.importance, a.category, a.summary, a.requires_action, a.due_at,
        a.amount, a.currency, a.recommended_action, a.reason, a.assessed_at
 FROM assessments a
 JOIN items i ON i.id = a.email_id
-WHERE a.importance IN ('high', 'critical') OR a.requires_action = 1 OR a.category = 'invoice'
+JOIN accounts account ON account.id = i.account_id
+WHERE (a.importance IN ('high', 'critical') OR a.requires_action = 1 OR a.category = 'invoice')
+  AND %s
 ORDER BY a.assessed_at DESC
 LIMIT :limit
-SQL, ['limit' => $limit]);
+SQL;
+        return $this->fetchAll(sprintf($sql, $this->activeEmailSql()), ['limit' => $limit]);
+    }
+
+    private function activeEmailSql(): string
+    {
+        return <<<'SQL'
+NOT EXISTS (SELECT 1 FROM trash_operations t WHERE t.email_id = i.id AND t.status = 'done')
+AND (json_extract(account.config_json, '$.trashFolder') IS NULL
+     OR json_extract(i.metadata_json, '$.folder') <> json_extract(account.config_json, '$.trashFolder'))
+AND NOT EXISTS (
+    SELECT 1 FROM trash_operations t
+    JOIN items original ON original.id = t.email_id
+    WHERE original.account_id = i.account_id AND t.status = 'done'
+      AND t.trash_folder = json_extract(i.metadata_json, '$.folder')
+)
+SQL;
     }
 
     /** @return array<string, mixed> */

@@ -50,6 +50,16 @@ final class SqliteConnectorProvider implements ConnectorProvider
         return $this->requiredString($config, 'draftFolder');
     }
 
+    public function trashFolder(Account $account): ?string
+    {
+        $config = $this->store->accountConnection($account->id)['config'];
+        $value = $config['trashFolder'] ?? null;
+        if ($value !== null && (!is_string($value) || trim($value) === '')) {
+            throw new RuntimeException('Account configuration field "trashFolder" must be a non-empty string.');
+        }
+        return $value;
+    }
+
     /** @param array<string, mixed> $config */
     private function requiredString(array $config, string $key): string
     {

@@ -110,7 +110,7 @@ final class ImapConnector implements HistoricalSourceConnector
             if ($message->uid <= $lastUid) {
                 continue;
             }
-            $items[] = $this->mapper->map($this->configuration->accountId, $request->stream->id, $message);
+            $items[] = $this->mapper->map($this->configuration->accountId, $request->stream->id, $message, $status->uidValidity);
             $lastUid = $message->uid;
         }
 
@@ -153,7 +153,7 @@ final class ImapConnector implements HistoricalSourceConnector
             if ($message->date < $request->since) {
                 continue;
             }
-            $items[] = $this->mapper->map($this->configuration->accountId, $request->stream->id, $message);
+            $items[] = $this->mapper->map($this->configuration->accountId, $request->stream->id, $message, $status->uidValidity);
         }
 
         return new HistoricalSyncResult(
