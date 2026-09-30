@@ -342,6 +342,43 @@ SQL;
         });
     }
 
+    public function purgeHiddenEmail(string $emailId): bool
+    {
+        return $this->run(function () use ($emailId): bool {
+            $row = $this->fetchOne(
+                "SELECT json_extract(metadata_json, '$.uidValidity') AS uid_validity FROM items WHERE id = :email_id",
+                ['email_id' => $emailId],
+            );
+            if ($row === null) {
+                if ($this->fetchOne('SELECT 1 FROM purged_emails WHERE email_id = :email_id', ['email_id' => $emailId]) !== null) {
+                    return false;
+                }
+                throw new RuntimeException('Email was not found.');
+            }
+            if (!$this->locallyHiddenEmail($emailId)) {
+                throw new RuntimeException('Only a locally hidden email can be purged.');
+            }
+            $uidValidity = $row['uid_validity'] ?? null;
+            if (!is_int($uidValidity) || $uidValidity < 1) {
+                throw new RuntimeException('The email has no valid stored IMAP UIDVALIDITY.');
+            }
+            if ($this->fetchOne('SELECT 1 FROM drafts WHERE email_id = :email_id LIMIT 1', ['email_id' => $emailId]) !== null) {
+                throw new RuntimeException('The email has a local draft; it cannot be purged.');
+            }
+            $statement = $this->pdo->prepare(
+                'INSERT INTO purged_emails (email_id, uid_validity, purged_at) VALUES (:email_id, :uid_validity, :purged_at)',
+            );
+            $statement->execute([
+                'email_id' => $emailId,
+                'uid_validity' => $uidValidity,
+                'purged_at' => gmdate(DATE_ATOM),
+            ]);
+            $statement = $this->pdo->prepare('DELETE FROM items WHERE id = :email_id');
+            $statement->execute(['email_id' => $emailId]);
+            return true;
+        });
+    }
+
     public function setTrashStatus(string $emailId, string $status, ?string $trashFolder = null): void
     {
         if (!in_array($status, ['pending', 'uncertain', 'done'], true)) {

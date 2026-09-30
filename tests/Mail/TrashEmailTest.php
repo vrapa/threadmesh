@@ -144,13 +144,45 @@ final class TrashEmailTest extends TestCase
         }
     }
 
-    private function email(string $account, ?string $id = null, string $folder = 'INBOX'): Item
+    public function testApprovedPurgeRemovesContentAndAssessmentButKeepsAUidValidityScopedTombstone(): void
+    {
+        $this->store->storeAssessment('one', 'high', 'project', 'Important.', true, null, null, null, 'Review.', 'Test.');
+        self::assertTrue($this->store->hideAbsentEmail('one'));
+        self::assertTrue($this->store->purgeHiddenEmail('one'));
+        self::assertFalse($this->store->purgeHiddenEmail('one'));
+
+        $pdo = new PDO('sqlite:' . $this->path);
+        foreach (['items' => 'id', 'assessments' => 'email_id', 'locally_hidden_emails' => 'email_id'] as $table => $column) {
+            $statement = $pdo->query("SELECT COUNT(*) FROM {$table} WHERE {$column} = 'one'");
+            self::assertInstanceOf(PDOStatement::class, $statement);
+            self::assertSame(0, (int) $statement->fetchColumn());
+        }
+        $statement = $pdo->query("SELECT uid_validity FROM purged_emails WHERE email_id = 'one'");
+        self::assertInstanceOf(PDOStatement::class, $statement);
+        self::assertSame(42, (int) $statement->fetchColumn());
+
+        $this->store->upsert($this->email('one'));
+        self::assertNull($this->store->email('one'));
+        self::assertSame(['two'], array_column($this->store->mailboxEmails(new DateTimeImmutable('2026-01-01')), 'id'));
+
+        $this->store->upsert($this->email('one', uidValidity: 43));
+        self::assertNotNull($this->store->email('one'));
+    }
+
+    public function testPurgeRejectsVisibleEmail(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('locally hidden');
+        $this->store->purgeHiddenEmail('one');
+    }
+
+    private function email(string $account, ?string $id = null, string $folder = 'INBOX', int $uidValidity = 42): Item
     {
         return new Item(
             new ItemId($id ?? $account), new SourceReference('imap', $account, $folder . ':1'), ItemType::Email,
             'Test subject', new ItemContent('Test body', null), new Actor('sender', 'Sender', 'sender@example.test'),
             ItemStatus::New, new DateTimeImmutable('2026-09-29T08:00:00+00:00'),
-            metadata: ['folder' => $folder, 'uid' => 1, 'uidValidity' => 42],
+            metadata: ['folder' => $folder, 'uid' => 1, 'uidValidity' => $uidValidity],
         );
     }
 }

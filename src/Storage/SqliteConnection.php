@@ -125,6 +125,22 @@ CREATE TABLE IF NOT EXISTS locally_hidden_emails (
     hidden_at TEXT NOT NULL,
     FOREIGN KEY (email_id) REFERENCES items(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS purged_emails (
+    email_id TEXT NOT NULL,
+    uid_validity INTEGER NOT NULL CHECK (uid_validity > 0),
+    purged_at TEXT NOT NULL,
+    PRIMARY KEY (email_id, uid_validity)
+);
+CREATE TRIGGER IF NOT EXISTS prevent_purged_email_reimport
+BEFORE INSERT ON items
+WHEN EXISTS (
+    SELECT 1 FROM purged_emails p
+    WHERE p.email_id = NEW.id
+      AND p.uid_validity = json_extract(NEW.metadata_json, '$.uidValidity')
+)
+BEGIN
+    SELECT RAISE(IGNORE);
+END;
 SQL);
     }
 }
