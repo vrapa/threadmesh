@@ -48,15 +48,19 @@ final class ThreadMeshApi
         return $email;
     }
 
-    public function trashEmail(string $id): void
+    public function trashEmail(string $id): string
     {
         if (preg_match('/^[a-f0-9]+$/D', $id) !== 1) {
             throw new RuntimeException('Invalid email ID.');
         }
         $response = $this->request('POST', '/v1/emails/' . $id . '/trash');
-        if (($response['trashed'] ?? null) !== true) {
-            throw new RuntimeException('ThreadMesh did not confirm the IMAP move.');
+        if (($response['removedLocal'] ?? null) === true) {
+            return 'removed_local';
         }
+        if (($response['trashed'] ?? null) === true) {
+            return 'moved';
+        }
+        throw new RuntimeException('ThreadMesh did not confirm the message removal.');
     }
 
     /** @return array<string, mixed> */

@@ -69,13 +69,13 @@ final class TrashKernelTest extends TestCase
         self::assertSame(404, $kernel->handle($this->authorized('/v1/emails/aabb/trash', 'GET'))->getStatusCode());
         $response = $kernel->handle($this->authorized('/v1/emails/aabb/trash', 'POST'));
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame('{"trashed":true}', $response->getContent());
+        self::assertSame('{"trashed":true,"removedLocal":false}', $response->getContent());
         self::assertSame(200, $kernel->handle($this->authorized('/v1/emails/aabb/trash', 'POST'))->getStatusCode());
         self::assertSame(1, $mover->moves);
         self::assertSame([], $store->mailboxEmails(new DateTimeImmutable('2026-01-01')));
     }
 
-    public function testAbsentSourceReturnsAStableConflictCode(): void
+    public function testAbsentSourceIsRemovedFromLocalViews(): void
     {
         $store = new SqliteStore(new SqliteConnection($this->path), SecretCipher::fromEnvironment());
         $store->configureAccount('work', 'Work', [
@@ -96,12 +96,15 @@ final class TrashKernelTest extends TestCase
         };
         $kernel = new Kernel(Bootstrap::create($this->path, $mover), 'test-token');
         $response = $kernel->handle($this->authorized('/v1/emails/aabb/trash', 'POST'));
-        self::assertSame(409, $response->getStatusCode());
+        self::assertSame(200, $response->getStatusCode());
         $body = json_decode((string) $response->getContent(), true);
         self::assertIsArray($body);
-        self::assertSame('source_absent', $body['code'] ?? null);
+        self::assertSame(false, $body['trashed'] ?? null);
+        self::assertSame(true, $body['removedLocal'] ?? null);
         self::assertSame('uncertain', $store->trashOperation('aabb')['status'] ?? null);
-        self::assertCount(1, $store->mailboxEmails(new DateTimeImmutable('2026-01-01')));
+        self::assertSame([], $store->mailboxEmails(new DateTimeImmutable('2026-01-01')));
+        self::assertNull($store->email('aabb'));
+        self::assertSame(200, $kernel->handle($this->authorized('/v1/emails/aabb/trash', 'POST'))->getStatusCode());
     }
 
     private function authorized(string $path, string $method): Request

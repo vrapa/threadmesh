@@ -77,10 +77,15 @@ final class DashboardPresenter extends Presenter
             $this->error('Invalid request token.', 403);
         }
         try {
-            $this->api->trashEmail($id);
-            $this->flashMessage('Zpráva byla přesunuta do koše.', 'success');
+            $outcome = $this->api->trashEmail($id);
+            $this->flashMessage(
+                $outcome === 'removed_local'
+                    ? 'Zpráva už nebyla na IMAP. Byla odstraněna z přehledů ThreadMesh.'
+                    : 'Zpráva byla přesunuta do koše.',
+                'success',
+            );
         } catch (RuntimeException $error) {
-            $this->flashMessage('Zprávu se nepodařilo přesunout do koše: ' . $error->getMessage(), 'danger');
+            $this->flashMessage('Zprávu se nepodařilo odstranit: ' . $error->getMessage(), 'danger');
         }
         $this->redirect('Dashboard:default', [
             'days' => $days,

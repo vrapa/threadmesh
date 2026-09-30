@@ -174,9 +174,9 @@ final class ThreadMeshService
         return $this->headers->email($email);
     }
 
-    public function trashEmail(string $id): void
+    public function trashEmail(string $id): string
     {
-        $this->trashEmail->execute($id);
+        return $this->trashEmail->execute($id);
     }
 
     public function assess(

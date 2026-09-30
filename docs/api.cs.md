@@ -30,7 +30,7 @@ Content-Type: application/json
 | `GET` | `/v1/mailbox` | Časově filtrovaný přehled e-mailů a hodnocení |
 | `GET` | `/v1/emails?limit=20` | E-maily bez uloženého hodnocení |
 | `GET` | `/v1/emails/{id}` | Detail e-mailu a hodnocení |
-| `POST` | `/v1/emails/{id}/trash` | Přesun jedné zprávy do IMAP koše; vrací `{ "trashed": true }` |
+| `POST` | `/v1/emails/{id}/trash` | Přesun jedné zprávy do IMAP koše nebo odstranění chybějící zprávy z místních přehledů; vrací příznaky `trashed` a `removedLocal` |
 | `POST` | `/v1/emails/{id}/assessment` | Uložení nebo nahrazení hodnocení |
 | `POST` | `/v1/emails/{id}/drafts` | Vytvoření lokálního konceptu odpovědi |
 | `GET` | `/v1/alerts?limit=50` | Důležitá, akční a fakturační upozornění |
@@ -59,7 +59,7 @@ Pro načtení celého těla použijte následně `GET /v1/emails/{id}`.
 
 Přesun do koše vyžaduje u účtu nastavené `trashFolder` nebo právě jednu dostupnou složku s příznakem `\Trash`. Server musí podporovat `UID MOVE`; nepoužívá se náhradní postup s vyprázdněním složky. Úspěšně přesunuté zprávy zmizí z přehledu a upozornění. Při nejistém výsledku aplikace před opakováním kontroluje zdrojovou zprávu.
 
-Pokud uložené UID ve zdrojové složce chybí, endpoint vrací HTTP 409 s `code: "source_absent"`. Přesun se neprovede; před opakováním zkontrolujte koš nebo jiné složky.
+Pokud uložené UID ve zdrojové složce chybí a UIDVALIDITY stále souhlasí, endpoint vrací `{ "trashed": false, "removedLocal": true }`. IMAP se nemění. Zpráva i hodnocení zůstávají uložené pro případ obnovy, ale zmizí z přehledu, detailu, nehodnocených zpráv a upozornění; historický import je znovu nezobrazí. Navázaný místní koncept automatické odstranění zastaví. Při chybě kontroly IMAP nebo změně UIDVALIDITY místní zpráva zůstane viditelná.
 
 ## Inicializace a historický import
 

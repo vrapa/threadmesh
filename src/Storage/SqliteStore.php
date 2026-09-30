@@ -290,7 +290,7 @@ SQL;
     public function email(string $id): ?array
     {
         $row = $this->fetchOne(
-            'SELECT i.*, a.importance, a.category, a.summary, a.requires_action, a.due_at, a.amount, a.currency, a.recommended_action, a.reason, a.assessed_at FROM items i LEFT JOIN assessments a ON a.email_id = i.id WHERE i.id = :id',
+            'SELECT i.*, a.importance, a.category, a.summary, a.requires_action, a.due_at, a.amount, a.currency, a.recommended_action, a.reason, a.assessed_at FROM items i LEFT JOIN assessments a ON a.email_id = i.id WHERE i.id = :id AND NOT EXISTS (SELECT 1 FROM locally_hidden_emails h WHERE h.email_id = i.id)',
             ['id' => $id],
         );
         return $row !== null ? $this->hydrateEmail($row) : null;
@@ -304,6 +304,42 @@ SQL;
             return null;
         }
         return ['status' => $row['status'], 'updated_at' => $row['updated_at']];
+    }
+
+    public function locallyHiddenEmail(string $emailId): bool
+    {
+        return $this->fetchOne(
+            'SELECT 1 FROM locally_hidden_emails WHERE email_id = :email_id',
+            ['email_id' => $emailId],
+        ) !== null;
+    }
+
+    public function hideAbsentEmail(string $emailId): bool
+    {
+        return $this->run(function () use ($emailId): bool {
+            if ($this->locallyHiddenEmail($emailId)) {
+                return true;
+            }
+            if ($this->fetchOne('SELECT 1 FROM items WHERE id = :email_id', ['email_id' => $emailId]) === null) {
+                throw new RuntimeException('Email was not found.');
+            }
+            $operation = $this->trashOperation($emailId);
+            if (($operation['status'] ?? null) === 'done') {
+                return false;
+            }
+            if (($operation['status'] ?? null) === 'pending'
+                && (new DateTimeImmutable($operation['updated_at']))->getTimestamp() > time() - 300) {
+                throw new RuntimeException('A move to IMAP Trash is already in progress.');
+            }
+            if ($this->fetchOne('SELECT 1 FROM drafts WHERE email_id = :email_id LIMIT 1', ['email_id' => $emailId]) !== null) {
+                throw new RuntimeException('The email has a local draft; it cannot be hidden automatically.');
+            }
+            $statement = $this->pdo->prepare(
+                'INSERT INTO locally_hidden_emails (email_id, hidden_at) VALUES (:email_id, :hidden_at)',
+            );
+            $statement->execute(['email_id' => $emailId, 'hidden_at' => gmdate(DATE_ATOM)]);
+            return true;
+        });
     }
 
     public function setTrashStatus(string $emailId, string $status, ?string $trashFolder = null): void
@@ -330,6 +366,9 @@ SQL);
         string $recommendedAction,
         string $reason,
     ): void {
+        if ($this->locallyHiddenEmail($emailId)) {
+            throw new RuntimeException('The email was removed from ThreadMesh views.');
+        }
         if (!in_array($importance, ['low', 'normal', 'high', 'critical'], true)) {
             throw new RuntimeException('Importance must be low, normal, high, or critical.');
         }
@@ -385,6 +424,7 @@ SQL;
     {
         return <<<'SQL'
 NOT EXISTS (SELECT 1 FROM trash_operations t WHERE t.email_id = i.id AND t.status = 'done')
+AND NOT EXISTS (SELECT 1 FROM locally_hidden_emails h WHERE h.email_id = i.id)
 AND (json_extract(account.config_json, '$.trashFolder') IS NULL
      OR json_extract(i.metadata_json, '$.folder') <> json_extract(account.config_json, '$.trashFolder'))
 AND NOT EXISTS (

@@ -120,6 +120,11 @@ CREATE TABLE IF NOT EXISTS trash_operations (
     updated_at TEXT NOT NULL,
     FOREIGN KEY (email_id) REFERENCES items(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS locally_hidden_emails (
+    email_id TEXT PRIMARY KEY,
+    hidden_at TEXT NOT NULL,
+    FOREIGN KEY (email_id) REFERENCES items(id) ON DELETE CASCADE
+);
 SQL);
     }
 }

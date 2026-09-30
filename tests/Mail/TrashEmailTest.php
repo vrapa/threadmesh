@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace ThreadMesh\Tests\Mail;
 
 use DateTimeImmutable;
+use PDO;
+use PDOStatement;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use ThreadMesh\Domain\Actor;
@@ -72,8 +74,9 @@ final class TrashEmailTest extends TestCase
         self::assertSame(['two'], array_column($this->store->mailboxEmails(new DateTimeImmutable('2026-01-01')), 'id'));
     }
 
-    public function testUncertainMoveRemainsVisibleAndChecksSourceBeforeRetry(): void
+    public function testUncertainMoveHidesAbsentSourceButPreservesStoredAssessment(): void
     {
+        $this->store->storeAssessment('one', 'high', 'project', 'Important.', true, null, null, null, 'Review.', 'Test.');
         $this->mover->fail = true;
         try {
             $this->service->execute('one');
@@ -85,18 +88,60 @@ final class TrashEmailTest extends TestCase
         self::assertEqualsCanonicalizing(['one', 'two'], array_column($this->store->mailboxEmails(new DateTimeImmutable('2026-01-01')), 'id'));
 
         $this->mover->present = false;
+        self::assertSame('removed_local', $this->service->execute('one'));
+        self::assertSame('removed_local', $this->service->execute('one'));
+        self::assertSame(1, count($this->mover->accounts));
+        self::assertTrue($this->store->locallyHiddenEmail('one'));
+        self::assertNull($this->store->email('one'));
+        self::assertSame(['two'], array_column($this->store->mailboxEmails(new DateTimeImmutable('2026-01-01')), 'id'));
+        self::assertSame(['two'], array_column($this->store->unassessedEmails(20), 'id'));
+        self::assertSame([], $this->store->alerts());
+        $pdo = new PDO('sqlite:' . $this->path);
+        $statement = $pdo->query("SELECT COUNT(*) FROM assessments WHERE email_id = 'one'");
+        self::assertInstanceOf(PDOStatement::class, $statement);
+        self::assertSame(1, (int) $statement->fetchColumn());
+        $this->store->upsert($this->email('one'));
+        self::assertSame(['two'], array_column($this->store->mailboxEmails(new DateTimeImmutable('2026-01-01')), 'id'));
+    }
+
+    public function testMissingSourceOnFirstAttemptIsHiddenWithoutAnImapMove(): void
+    {
+        $this->mover->absentOnMove = true;
+        self::assertSame('removed_local', $this->service->execute('one'));
+        self::assertTrue($this->store->locallyHiddenEmail('one'));
+        self::assertSame(['one'], $this->mover->accounts);
+    }
+
+    public function testLocalDraftPreventsAutomaticHiding(): void
+    {
+        $this->store->createDraft('one', 'Reply', 'Unsent text');
+        $this->mover->absentOnMove = true;
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('local draft');
         try {
             $this->service->execute('one');
-            self::fail('Expected the uncertain move to remain blocked.');
-        } catch (SourceMessageAbsent $error) {
-            self::assertStringContainsString('Check Trash', $error->getMessage());
+        } finally {
+            self::assertFalse($this->store->locallyHiddenEmail('one'));
+            self::assertNotNull($this->store->email('one'));
         }
-        self::assertSame(1, count($this->mover->accounts));
-        $this->mover->present = true;
-        $this->mover->fail = false;
-        $this->service->execute('one');
-        self::assertSame('done', $this->store->trashOperation('one')['status'] ?? null);
-        self::assertSame(['one', 'one'], $this->mover->accounts);
+    }
+
+    public function testImapVerificationErrorDoesNotHideTheEmail(): void
+    {
+        $this->mover->fail = true;
+        try {
+            $this->service->execute('one');
+        } catch (RuntimeException) {
+        }
+        $this->mover->preflightError = 'IMAP UIDVALIDITY changed';
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('UIDVALIDITY changed');
+        try {
+            $this->service->execute('one');
+        } finally {
+            self::assertFalse($this->store->locallyHiddenEmail('one'));
+            self::assertNotNull($this->store->email('one'));
+        }
     }
 
     private function email(string $account, ?string $id = null, string $folder = 'INBOX'): Item
@@ -116,15 +161,23 @@ final class FakeTrashMover implements TrashMover
     public array $accounts = [];
     public bool $fail = false;
     public bool $present = true;
+    public bool $absentOnMove = false;
+    public ?string $preflightError = null;
 
     public function sourcePresent(ImapConfiguration $configuration, array $email): bool
     {
+        if ($this->preflightError !== null) {
+            throw new RuntimeException($this->preflightError);
+        }
         return $this->present;
     }
 
     public function move(ImapConfiguration $configuration, array $email, ?string $configuredTrashFolder): string
     {
         $this->accounts[] = $configuration->accountId;
+        if ($this->absentOnMove) {
+            throw new SourceMessageAbsent();
+        }
         if ($this->fail) {
             throw new RuntimeException('Test move failed.');
         }

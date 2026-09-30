@@ -21,8 +21,11 @@ final class TrashEmail
     ) {
     }
 
-    public function execute(string $emailId): void
+    public function execute(string $emailId): string
     {
+        if ($this->store->locallyHiddenEmail($emailId)) {
+            return 'removed_local';
+        }
         $email = $this->store->email($emailId) ?? throw new RuntimeException('Email was not found.');
         if (($email['connector'] ?? null) !== 'imap' || ($email['type'] ?? null) !== 'email') {
             throw new RuntimeException('Only stored IMAP email can be moved to Trash.');
@@ -37,14 +40,14 @@ final class TrashEmail
 
         $operation = $this->store->trashOperation($emailId);
         if (($operation['status'] ?? null) === 'done') {
-            return;
+            return 'moved';
         }
         if (($operation['status'] ?? null) === 'pending'
             && (new DateTimeImmutable($operation['updated_at']))->getTimestamp() > time() - 300) {
             throw new RuntimeException('A move to IMAP Trash is already in progress.');
         }
         if ($operation !== null && !$this->mover->sourcePresent($configuration, $email)) {
-            throw new SourceMessageAbsent();
+            return $this->store->hideAbsentEmail($emailId) ? 'removed_local' : 'moved';
         }
 
         $claimed = $this->store->run(function () use ($emailId): bool {
@@ -60,11 +63,19 @@ final class TrashEmail
             return true;
         });
         if (!$claimed) {
-            return;
+            return 'moved';
         }
 
         try {
             $path = $this->mover->move($configuration, $email, $trashFolder);
+        } catch (SourceMessageAbsent) {
+            return $this->store->run(function () use ($emailId): string {
+                if (($this->store->trashOperation($emailId)['status'] ?? null) === 'done') {
+                    return 'moved';
+                }
+                $this->store->setTrashStatus($emailId, 'uncertain');
+                return $this->store->hideAbsentEmail($emailId) ? 'removed_local' : 'moved';
+            });
         } catch (Throwable $error) {
             $this->store->setTrashStatus($emailId, 'uncertain');
             if ($error instanceof RuntimeException) {
@@ -73,5 +84,6 @@ final class TrashEmail
             throw new RuntimeException('Could not move the message to IMAP Trash; the result is uncertain.', 0, $error);
         }
         $this->store->setTrashStatus($emailId, 'done', $path);
+        return 'moved';
     }
 }

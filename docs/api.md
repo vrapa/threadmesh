@@ -30,7 +30,7 @@ Content-Type: application/json
 | `GET` | `/v1/mailbox` | List email overview records within a time range |
 | `GET` | `/v1/emails?limit=20` | List emails without a stored assessment |
 | `GET` | `/v1/emails/{id}` | Read one stored email and assessment |
-| `POST` | `/v1/emails/{id}/trash` | Move one stored email to IMAP Trash; returns `{ "trashed": true }` |
+| `POST` | `/v1/emails/{id}/trash` | Move one stored email to IMAP Trash or remove an absent source from local views; returns `trashed` and `removedLocal` booleans |
 | `POST` | `/v1/emails/{id}/assessment` | Store or replace a structured assessment |
 | `POST` | `/v1/emails/{id}/drafts` | Create a new local reply draft |
 | `GET` | `/v1/alerts?limit=50` | List important, actionable, or invoice assessments |
@@ -59,7 +59,7 @@ Content-Type: application/json
 Supported encryption values are `ssl`, `tls`, and `starttls`. Omitting `secret` during an update preserves the encrypted existing secret. Obtain the exact `draftFolder` path from the folder discovery endpoint.
 `trashFolder` is optional when exactly one selectable folder has the IMAP `\Trash` special-use flag. The trash endpoint requires server support for `UID MOVE`, never uses an EXPUNGE fallback, and hides successfully moved messages from overview and alerts. An uncertain result requires checking the source folder before retrying.
 
-When the stored UID is absent from its recorded source folder, this endpoint returns HTTP 409 with `code: "source_absent"`. No move is attempted; check Trash or other folders before retrying.
+When the stored UID is absent from its recorded source folder and UIDVALIDITY still matches, this endpoint returns `{ "trashed": false, "removedLocal": true }`. No IMAP mutation occurs. The email and assessment remain stored for recovery but disappear from mailbox, detail, unassessed, and alert views; reimport does not show them again. A local draft blocks automatic removal. An IMAP check that fails or finds changed UIDVALIDITY does not remove the local email.
 
 ## Initialize and synchronize
 

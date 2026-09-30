@@ -106,7 +106,7 @@ A new installation may explicitly import recent history through `/v1/accounts/wo
 
 `trashFolder` is optional if the IMAP server marks exactly one selectable folder with `\Trash`. The dashboard's Delete button immediately moves one message to that folder. The server must support `UID MOVE`; an uncertain or unsafe move is reported as an error.
 
-If the recorded message UID is no longer in its source folder, Delete reports the missing source. Check IMAP Trash or other folders; ThreadMesh keeps the stored message visible until a safe move is confirmed.
+If the recorded message UID is no longer in its source folder and UIDVALIDITY still matches, Delete removes it from ThreadMesh views without changing IMAP. The message and assessment remain stored for recovery, and later synchronization does not show them again. A local draft blocks this automatic removal.
 
 ## MCP and AI automation
 
