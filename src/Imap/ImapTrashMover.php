@@ -26,10 +26,13 @@ final class ImapTrashMover implements TrashMover
         $this->validateUidValidity($source, $email);
         $metadata = $this->metadata($email);
         $uid = $this->uid($metadata);
+        if (!$this->uidPresent($client, $uid)) {
+            return false;
+        }
         try {
             $message = $source->messages()->leaveUnread()->setFetchFlags(false)->getMessageByUid($uid);
         } catch (Throwable $error) {
-            if ($error instanceof MessageNotFoundException) {
+            if ($error instanceof MessageNotFoundException || !$this->uidPresent($client, $uid)) {
                 return false;
             }
             throw new RuntimeException('Could not verify the source IMAP message.', 0, $error);
@@ -45,9 +48,15 @@ final class ImapTrashMover implements TrashMover
         $uidValidity = $this->validateUidValidity($source, $email);
         $metadata = $this->metadata($email);
         $uid = $this->uid($metadata);
+        if (!$this->uidPresent($client, $uid)) {
+            throw new SourceMessageAbsent();
+        }
         try {
             $message = $source->messages()->leaveUnread()->setFetchFlags(false)->getMessageByUid($uid);
         } catch (Throwable $error) {
+            if (!$this->uidPresent($client, $uid)) {
+                throw new SourceMessageAbsent();
+            }
             throw new RuntimeException('Source IMAP message is unavailable; it was not moved.', 0, $error);
         }
         $this->validateIdentity($message, $metadata);
@@ -100,6 +109,20 @@ final class ImapTrashMover implements TrashMover
         $client = $manager->account('default');
         $client->connect();
         return $client;
+    }
+
+    /** @phpstan-impure IMAP folder contents can change between two searches. */
+    private function uidPresent(Client $client, int $uid): bool
+    {
+        try {
+            $found = $client->getConnection()->search(['UID', (string) $uid])->setCanBeEmpty(true)->validatedData();
+        } catch (Throwable $error) {
+            throw new RuntimeException('Could not verify the source IMAP UID.', 0, $error);
+        }
+        if (!is_array($found)) {
+            throw new RuntimeException('IMAP returned an invalid UID search response.');
+        }
+        return $this->safety->uidExists($found, $uid);
     }
 
     /** @param array<string, mixed> $email */

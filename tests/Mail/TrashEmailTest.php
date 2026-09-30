@@ -16,6 +16,7 @@ use ThreadMesh\Domain\ItemType;
 use ThreadMesh\Domain\SourceReference;
 use ThreadMesh\Imap\ImapConfiguration;
 use ThreadMesh\Imap\TrashMover;
+use ThreadMesh\Imap\SourceMessageAbsent;
 use ThreadMesh\Mail\TrashEmail;
 use ThreadMesh\Storage\SecretCipher;
 use ThreadMesh\Storage\SqliteConnection;
@@ -87,8 +88,8 @@ final class TrashEmailTest extends TestCase
         try {
             $this->service->execute('one');
             self::fail('Expected the uncertain move to remain blocked.');
-        } catch (RuntimeException $error) {
-            self::assertStringContainsString('Check IMAP Trash', $error->getMessage());
+        } catch (SourceMessageAbsent $error) {
+            self::assertStringContainsString('Check Trash', $error->getMessage());
         }
         self::assertSame(1, count($this->mover->accounts));
         $this->mover->present = true;

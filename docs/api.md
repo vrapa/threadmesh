@@ -59,6 +59,8 @@ Content-Type: application/json
 Supported encryption values are `ssl`, `tls`, and `starttls`. Omitting `secret` during an update preserves the encrypted existing secret. Obtain the exact `draftFolder` path from the folder discovery endpoint.
 `trashFolder` is optional when exactly one selectable folder has the IMAP `\Trash` special-use flag. The trash endpoint requires server support for `UID MOVE`, never uses an EXPUNGE fallback, and hides successfully moved messages from overview and alerts. An uncertain result requires checking the source folder before retrying.
 
+When the stored UID is absent from its recorded source folder, this endpoint returns HTTP 409 with `code: "source_absent"`. No move is attempted; check Trash or other folders before retrying.
+
 ## Initialize and synchronize
 
 Initialization deliberately imports no history:

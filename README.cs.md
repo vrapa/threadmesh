@@ -106,6 +106,8 @@ Na nové instalaci lze poslední zprávy výslovně načíst přes `/v1/accounts
 
 `trashFolder` není nutné zadat, pokud IMAP server označuje právě jednu dostupnou složku příznakem `\Trash`. Tlačítko Smazat v přehledu přesune zprávu do tohoto koše ihned po kliknutí. Server musí podporovat `UID MOVE`; nejistý nebo nebezpečný přesun skončí chybou.
 
+Pokud už uložené UID není ve zdrojové složce, tlačítko Smazat ohlásí chybějící zprávu. Zkontrolujte IMAP koš nebo jiné složky; ThreadMesh ji ponechá v přehledu, dokud není bezpečný přesun potvrzen.
+
 ## MCP a automatizace
 
 MCP server spusťte na `http://127.0.0.1:8081/mcp`:

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use RuntimeException;
 use Throwable;
 use ThreadMesh\Imap\TrashMover;
+use ThreadMesh\Imap\SourceMessageAbsent;
 use ThreadMesh\Storage\SqliteConnectorProvider;
 use ThreadMesh\Storage\SqliteStore;
 
@@ -43,7 +44,7 @@ final class TrashEmail
             throw new RuntimeException('A move to IMAP Trash is already in progress.');
         }
         if ($operation !== null && !$this->mover->sourcePresent($configuration, $email)) {
-            throw new RuntimeException('The source message is absent after an uncertain move. Check IMAP Trash before retrying.');
+            throw new SourceMessageAbsent();
         }
 
         $claimed = $this->store->run(function () use ($emailId): bool {

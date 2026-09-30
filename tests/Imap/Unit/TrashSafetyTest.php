@@ -57,4 +57,13 @@ final class TrashSafetyTest extends TestCase
         self::assertFalse($safety->supportsMove(['IMAP4rev1', 'UIDPLUS']));
         self::assertTrue($safety->supportsMove(['IMAP4rev1', 'MOVE']));
     }
+
+    public function testUidSearchRequiresTheExactUid(): void
+    {
+        $safety = new TrashSafety();
+        self::assertTrue($safety->uidExists(['41487'], 41487));
+        self::assertFalse($safety->uidExists([], 41487));
+        self::assertFalse($safety->uidExists(['41488'], 41487));
+        self::assertFalse($safety->uidExists(['41487x'], 41487));
+    }
 }

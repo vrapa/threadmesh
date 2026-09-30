@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 use ThreadMesh\Mail\ThreadMeshService;
+use ThreadMesh\Imap\SourceMessageAbsent;
 
 final class Kernel
 {
@@ -36,6 +37,8 @@ final class Kernel
                 return $this->json(['error' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
             }
             return $this->route($request);
+        } catch (SourceMessageAbsent $error) {
+            return $this->json(['error' => $error->getMessage(), 'code' => 'source_absent'], Response::HTTP_CONFLICT);
         } catch (Throwable $error) {
             return $this->json(['error' => $error->getMessage()], Response::HTTP_BAD_REQUEST);
         }

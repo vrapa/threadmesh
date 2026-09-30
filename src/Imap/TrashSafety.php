@@ -67,4 +67,15 @@ final class TrashSafety
         }
         return false;
     }
+
+    /** @param array<mixed> $foundUids */
+    public function uidExists(array $foundUids, int $uid): bool
+    {
+        foreach ($foundUids as $foundUid) {
+            if ((is_int($foundUid) || is_string($foundUid)) && (string) $foundUid === (string) $uid) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

@@ -18,6 +18,7 @@ use ThreadMesh\Domain\ItemType;
 use ThreadMesh\Domain\SourceReference;
 use ThreadMesh\Imap\ImapConfiguration;
 use ThreadMesh\Imap\TrashMover;
+use ThreadMesh\Imap\SourceMessageAbsent;
 use ThreadMesh\Storage\SecretCipher;
 use ThreadMesh\Storage\SqliteConnection;
 use ThreadMesh\Storage\SqliteStore;
@@ -72,6 +73,35 @@ final class TrashKernelTest extends TestCase
         self::assertSame(200, $kernel->handle($this->authorized('/v1/emails/aabb/trash', 'POST'))->getStatusCode());
         self::assertSame(1, $mover->moves);
         self::assertSame([], $store->mailboxEmails(new DateTimeImmutable('2026-01-01')));
+    }
+
+    public function testAbsentSourceReturnsAStableConflictCode(): void
+    {
+        $store = new SqliteStore(new SqliteConnection($this->path), SecretCipher::fromEnvironment());
+        $store->configureAccount('work', 'Work', [
+            'host' => 'imap.example.test', 'username' => 'me@example.test',
+        ], 'test-password');
+        $store->upsert(new Item(
+            new ItemId('aabb'), new SourceReference('imap', 'work', 'INBOX:1'), ItemType::Email,
+            'Test', new ItemContent('Body', null), new Actor('sender', 'Sender'),
+            ItemStatus::New, new DateTimeImmutable('2026-09-29T08:00:00+00:00'),
+            metadata: ['folder' => 'INBOX', 'uid' => 1, 'uidValidity' => 42],
+        ));
+        $mover = new class implements TrashMover {
+            public function sourcePresent(ImapConfiguration $configuration, array $email): bool { return false; }
+            public function move(ImapConfiguration $configuration, array $email, ?string $configuredTrashFolder): string
+            {
+                throw new SourceMessageAbsent();
+            }
+        };
+        $kernel = new Kernel(Bootstrap::create($this->path, $mover), 'test-token');
+        $response = $kernel->handle($this->authorized('/v1/emails/aabb/trash', 'POST'));
+        self::assertSame(409, $response->getStatusCode());
+        $body = json_decode((string) $response->getContent(), true);
+        self::assertIsArray($body);
+        self::assertSame('source_absent', $body['code'] ?? null);
+        self::assertSame('uncertain', $store->trashOperation('aabb')['status'] ?? null);
+        self::assertCount(1, $store->mailboxEmails(new DateTimeImmutable('2026-01-01')));
     }
 
     private function authorized(string $path, string $method): Request

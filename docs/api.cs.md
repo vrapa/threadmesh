@@ -59,6 +59,8 @@ Pro načtení celého těla použijte následně `GET /v1/emails/{id}`.
 
 Přesun do koše vyžaduje u účtu nastavené `trashFolder` nebo právě jednu dostupnou složku s příznakem `\Trash`. Server musí podporovat `UID MOVE`; nepoužívá se náhradní postup s vyprázdněním složky. Úspěšně přesunuté zprávy zmizí z přehledu a upozornění. Při nejistém výsledku aplikace před opakováním kontroluje zdrojovou zprávu.
 
+Pokud uložené UID ve zdrojové složce chybí, endpoint vrací HTTP 409 s `code: "source_absent"`. Přesun se neprovede; před opakováním zkontrolujte koš nebo jiné složky.
+
 ## Inicializace a historický import
 
 Běžná inicializace záměrně neimportuje historii. Uloží aktuální nejvyšší UID a další synchronizace čte pouze novější zprávy.

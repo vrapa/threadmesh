@@ -80,6 +80,12 @@ final class ThreadMeshApi
         $body = @file_get_contents(rtrim($this->baseUrl, '/') . $path, false, $context);
         $status = $this->statusCode($http_response_header ?? []);
         if (!is_string($body) || $status < 200 || $status >= 300) {
+            if ($status === 409 && is_string($body)) {
+                $failure = json_decode($body, true);
+                if (is_array($failure) && ($failure['code'] ?? null) === 'source_absent') {
+                    throw new RuntimeException('Zpráva už není v původní složce IMAP. Zkontrolujte koš nebo jiné složky.');
+                }
+            }
             throw new RuntimeException(sprintf('ThreadMesh API request failed (HTTP %d).', $status));
         }
         try {
